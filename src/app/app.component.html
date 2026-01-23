@@ -1,0 +1,75 @@
+<div class="page">
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Data Curation Checker</p>
+      <h1>Data Curation Checker</h1>
+      <p class="subtitle">Validate, structure, and prepare your data for downstream use.</p>
+    </div>
+    <button class="primary" type="button" (click)="runCheck()" [disabled]="!hasInput">
+      Run check
+    </button>
+  </header>
+
+  <main class="grid">
+    <section class="panel">
+      <h2>Data source</h2>
+
+      <div class="panel-block">
+        <label class="field">
+          <span>Upload file</span>
+          <input #fileInput type="file" (change)="handleFileSelected($event)" />
+        </label>
+        <div class="file-meta" *ngIf="selectedFileName">
+          <div>
+            <strong>{{ selectedFileName }}</strong>
+            <span>{{ selectedFileSize }}</span>
+          </div>
+          <button class="link" type="button" (click)="clearFile()">Remove file</button>
+        </div>
+      </div>
+
+      <div class="divider">or</div>
+
+      <label class="field">
+        <span>Paste text</span>
+        <textarea
+          rows="10"
+          [(ngModel)]="inputText"
+          placeholder="Paste content here (e.g. CSV, TSV, or plain text)."
+        ></textarea>
+      </label>
+
+      <p class="hint">Tip: For CSV/TSV, the first line is treated as the header.</p>
+    </section>
+
+    <section class="panel">
+      <h2>File check</h2>
+
+      <div class="status" [class.ready]="hasInput">
+        <span class="status-dot"></span>
+        <span>{{ hasInput ? 'Ready to run check' : 'Please add a file or text.' }}</span>
+      </div>
+
+      <div class="results" *ngIf="checkResults.length; else noResults">
+        <div class="result" *ngFor="let result of checkResults">
+          <div class="result-title">
+            <span
+              class="badge"
+              [class.ok]="result.status === 'ok'"
+              [class.warn]="result.status === 'warn'"
+              [class.error]="result.status === 'error'"
+            >
+              {{ result.statusLabel }}
+            </span>
+            <span>{{ result.label }}</span>
+          </div>
+          <p>{{ result.detail }}</p>
+        </div>
+      </div>
+
+      <ng-template #noResults>
+        <p class="placeholder">No check run yet. Click "Run check".</p>
+      </ng-template>
+    </section>
+  </main>
+</div>
