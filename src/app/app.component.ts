@@ -2004,9 +2004,8 @@ export class AppComponent {
       '14937-7': { name: 'Thyroglobulin', unit: 'ng/mL', typicalRange: { low: 1.4, high: 29.2 }, specimenType: 'blood' },
       '14936-9': { name: 'Anti-TPO', unit: 'IU/mL', typicalRange: { low: 0, high: 9 }, specimenType: 'blood' },
       '14935-1': { name: 'Anti-Tg', unit: 'IU/mL', typicalRange: { low: 0, high: 4 }, specimenType: 'blood' },
-      // Iron Studies Extended (Iron and TIBC already defined above)
+      // Iron Studies Extended (Iron, TIBC, and Ferritin already defined above)
       '2498-4': { name: 'Transferrin Saturation', unit: '%', typicalRange: { low: 20, high: 50 }, specimenType: 'blood' },
-      '26499-4': { name: 'Ferritin', unit: 'ng/mL', typicalRange: { low: 15, high: 200 }, altUnit: 'μg/L', altRange: { low: 15, high: 200 }, specimenType: 'blood' },
       '3034-6': { name: 'Transferrin', unit: 'mg/dL', typicalRange: { low: 200, high: 400 }, altUnit: 'g/L', altRange: { low: 2.0, high: 4.0 }, specimenType: 'blood' },
       // Vitamin Levels
       '14636-0': { name: 'Vitamin D 25-OH', unit: 'ng/mL', typicalRange: { low: 30, high: 100 }, altUnit: 'nmol/L', altRange: { low: 75, high: 250 }, specimenType: 'blood' },
@@ -2054,20 +2053,10 @@ export class AppComponent {
       '2523-0': { name: 'Lactate', unit: 'mmol/L', typicalRange: { low: 0.5, high: 2.2 }, specimenType: 'blood' },
       '33914-4': { name: 'Ammonia', unit: 'μg/dL', typicalRange: { low: 15, high: 45 }, altUnit: 'μmol/L', altRange: { low: 11, high: 32 }, specimenType: 'blood' },
       '33914-5': { name: 'Osmolality', unit: 'mOsm/kg', typicalRange: { low: 275, high: 295 }, specimenType: 'blood' },
-      // Lipid Panel Extended
-      '2093-3': { name: 'Total Cholesterol', unit: 'mg/dL', typicalRange: { low: 0, high: 200 }, altUnit: 'mmol/L', altRange: { low: 0, high: 5.2 }, requiresFasting: true, specimenType: 'blood' },
-      '2089-1': { name: 'LDL Cholesterol', unit: 'mg/dL', typicalRange: { low: 0, high: 100 }, altUnit: 'mmol/L', altRange: { low: 0, high: 2.6 }, requiresFasting: true, specimenType: 'blood' },
-      '2085-9': { name: 'HDL Cholesterol', unit: 'mg/dL', typicalRange: { low: 40, high: 60 }, altUnit: 'mmol/L', altRange: { low: 1.0, high: 1.6 }, requiresFasting: true, specimenType: 'blood' },
-      '2571-8': { name: 'Triglycerides', unit: 'mg/dL', typicalRange: { low: 0, high: 150 }, altUnit: 'mmol/L', altRange: { low: 0, high: 1.7 }, requiresFasting: true, specimenType: 'blood' },
+      // Lipid Panel Extended (Total Cholesterol, LDL, HDL, Triglycerides already defined above)
       '2089-2': { name: 'Non-HDL Cholesterol', unit: 'mg/dL', typicalRange: { low: 0, high: 130 }, altUnit: 'mmol/L', altRange: { low: 0, high: 3.4 }, requiresFasting: true, specimenType: 'blood' },
       '2089-3': { name: 'Cholesterol/HDL Ratio', unit: 'ratio', typicalRange: { low: 0, high: 5.0 }, requiresFasting: true, specimenType: 'blood' },
-      // Additional Electrolytes
-      '2951-2': { name: 'Sodium', unit: 'mEq/L', typicalRange: { low: 136, high: 145 }, altUnit: 'mmol/L', altRange: { low: 136, high: 145 }, specimenType: 'blood' },
-      '2823-3': { name: 'Potassium', unit: 'mEq/L', typicalRange: { low: 3.5, high: 5.0 }, altUnit: 'mmol/L', altRange: { low: 3.5, high: 5.0 }, specimenType: 'blood' },
-      '1759-0': { name: 'Calcium', unit: 'mg/dL', typicalRange: { low: 8.5, high: 10.5 }, altUnit: 'mmol/L', altRange: { low: 2.1, high: 2.6 }, specimenType: 'blood' },
-      '17861-6': { name: 'Calcium Ionized', unit: 'mg/dL', typicalRange: { low: 4.5, high: 5.3 }, altUnit: 'mmol/L', altRange: { low: 1.12, high: 1.32 }, specimenType: 'blood' },
-      '2777-1': { name: 'Phosphorus', unit: 'mg/dL', typicalRange: { low: 2.5, high: 4.5 }, altUnit: 'mmol/L', altRange: { low: 0.81, high: 1.45 }, specimenType: 'blood' },
-      '2594-1': { name: 'Magnesium', unit: 'mg/dL', typicalRange: { low: 1.7, high: 2.2 }, altUnit: 'mmol/L', altRange: { low: 0.7, high: 0.91 }, specimenType: 'blood' },
+      // Additional Electrolytes (Sodium, Potassium, Calcium, Calcium Ionized, Phosphorus, Magnesium already defined above)
       '2075-0': { name: 'Chloride', unit: 'mEq/L', typicalRange: { low: 98, high: 107 }, altUnit: 'mmol/L', altRange: { low: 98, high: 107 }, specimenType: 'blood' },
       '2028-9': { name: 'CO2', unit: 'mEq/L', typicalRange: { low: 22, high: 28 }, altUnit: 'mmol/L', altRange: { low: 22, high: 28 }, specimenType: 'blood' },
       '2026-4': { name: 'Bicarbonate', unit: 'mEq/L', typicalRange: { low: 22, high: 28 }, altUnit: 'mmol/L', altRange: { low: 22, high: 28 }, specimenType: 'blood' },
