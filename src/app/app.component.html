@@ -31,15 +31,15 @@
       <div class="divider">or</div>
 
       <label class="field">
-        <span>Paste text</span>
+        <span>Paste FHIR Data set</span>
         <textarea
           rows="10"
           [(ngModel)]="inputText"
-          placeholder="Paste content here (e.g. CSV, TSV, or plain text)."
+          placeholder="Paste your FHIR dataset here (JSON, NDJSON, or plain text)."
         ></textarea>
       </label>
 
-      <p class="hint">Tip: For CSV/TSV, the first line is treated as the header.</p>
+      <p class="hint">Tip: Use valid FHIR JSON when possible for best results.</p>
     </section>
 
     <section class="panel">
