@@ -3,10 +3,21 @@
     <div>
       <p class="eyebrow">Data Curation Checker</p>
       <h1>Data Curation Checker</h1>
-      <p class="subtitle">Validate, structure, and prepare your data for downstream use.</p>
+      <p class="subtitle">Professional-grade validation of FHIR Observation resources with comprehensive laboratory medicine checks. Validates 144+ laboratory parameters with critical value detection, workflow validation, and structural integrity checks. Supports JSON Bundles, arrays, NDJSON, and single resources.</p>
     </div>
-    <button class="primary" type="button" (click)="runCheck()" [disabled]="!hasInput">
-      Run check
+    <button 
+      class="primary" 
+      type="button" 
+      (click)="runCheck()" 
+      [disabled]="!hasInput || isProcessing"
+      [attr.aria-busy]="isProcessing"
+      aria-label="Run validation check on FHIR Observation data"
+    >
+      <span *ngIf="!isProcessing">Run check</span>
+      <span *ngIf="isProcessing" class="loading-text">
+        <span class="spinner" aria-hidden="true"></span>
+        Validating...
+      </span>
     </button>
   </header>
 
@@ -14,10 +25,79 @@
     <section class="panel">
       <h2>Data source</h2>
 
+      <div class="info-box">
+        <h3>Supported file formats</h3>
+        <ul class="format-list">
+          <li><strong>JSON Bundle:</strong> FHIR Bundle with Observation resources in <code>entry[].resource</code> (recommended for multiple observations)</li>
+          <li><strong>JSON Array:</strong> Array of Observation resources <code ngNonBindable>[&#123;...&#125;, &#123;...&#125;]</code> (simple format for multiple observations)</li>
+          <li><strong>Single JSON:</strong> Single Observation resource <code ngNonBindable>&#123;resourceType: "Observation", ...&#125;</code> (for single observation validation)</li>
+          <li><strong>NDJSON:</strong> Newline-delimited JSON (one Observation per line) - efficient for large datasets</li>
+          <li><strong>File extensions:</strong> .json, .ndjson, .txt (or any text file containing valid JSON)</li>
+          <li><strong>File size limit:</strong> Maximum 10MB per file</li>
+        </ul>
+        <details class="example-details">
+          <summary>Example formats</summary>
+          <div class="example-content">
+            <div class="example-block">
+              <strong>Single Observation:</strong>
+              <pre><code ngNonBindable>&#123;
+  "resourceType": "Observation",
+  "status": "final",
+  "code": &#123;
+    "coding": [&#123;
+      "system": "http://loinc.org",
+      "code": "2339-0",
+      "display": "Glucose [Mass/volume] in Blood"
+    &#125;]
+  },
+  "valueQuantity": &#123;
+    "value": 95,
+    "unit": "mg/dL",
+    "system": "http://unitsofmeasure.org"
+  }
+&#125;</code></pre>
+            </div>
+            <div class="example-block">
+              <strong>JSON Array:</strong>
+              <pre><code ngNonBindable>[&#123;
+  "resourceType": "Observation",
+  ...
+},
+&#123;
+  "resourceType": "Observation",
+  ...
+&#125;]</code></pre>
+            </div>
+            <div class="example-block">
+              <strong>FHIR Bundle:</strong>
+              <pre><code ngNonBindable>&#123;
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [&#123;
+    "resource": &#123;
+      "resourceType": "Observation",
+      ...
+    }
+  &#125;]
+&#125;</code></pre>
+            </div>
+          </div>
+        </details>
+      </div>
+
       <div class="panel-block">
         <label class="field">
           <span>Upload file</span>
-          <input #fileInput type="file" (change)="handleFileSelected($event)" />
+          <input 
+            #fileInput 
+            type="file" 
+            accept=".json,.ndjson,.txt,application/json,text/plain" 
+            (change)="handleFileSelected($event)"
+            [disabled]="isProcessing"
+            aria-describedby="file-hint"
+            aria-label="Upload FHIR Observation file"
+          />
+          <small id="file-hint" class="field-hint">Select a JSON, NDJSON, or text file containing FHIR Observation resources (max 10MB)</small>
         </label>
         <div class="file-meta" *ngIf="selectedFileName">
           <div>
@@ -31,23 +111,127 @@
       <div class="divider">or</div>
 
       <label class="field">
-        <span>Paste FHIR Data set</span>
+        <span>Paste FHIR Observation data set</span>
         <textarea
           rows="10"
           [(ngModel)]="inputText"
-          placeholder="Paste your FHIR dataset here (JSON, NDJSON, or plain text)."
+          [disabled]="isProcessing"
+          (input)="clearResults()"
+          placeholder="Example formats:
+Single Observation: {&quot;resourceType&quot;: &quot;Observation&quot;, &quot;status&quot;: &quot;final&quot;, ...}
+
+JSON Array: [{&quot;resourceType&quot;: &quot;Observation&quot;, ...}, ...]
+
+FHIR Bundle: {&quot;resourceType&quot;: &quot;Bundle&quot;, &quot;entry&quot;: [{&quot;resource&quot;: {&quot;resourceType&quot;: &quot;Observation&quot;}}]}"
+          aria-describedby="textarea-hint"
+          aria-label="Paste FHIR Observation data set"
         ></textarea>
+        <small id="textarea-hint" class="field-hint">Paste JSON directly into this field. Supports all formats listed above.</small>
       </label>
 
-      <p class="hint">Tip: Use valid FHIR JSON when possible for best results.</p>
+      <div class="demo-section">
+        <button 
+          class="demo-button" 
+          type="button" 
+          (click)="loadExampleData()"
+          [disabled]="isProcessing"
+          aria-label="Load example FHIR Observation data for demonstration"
+        >
+          <span aria-hidden="true">📋</span>
+          Load example data
+        </button>
+        <p class="demo-hint">
+          <strong>Try it out!</strong> Click to load sample FHIR Observation data with 10 comprehensive examples demonstrating various validation scenarios:
+          <br>✓ <strong>Valid observations</strong> with complete metadata (Glucose, Creatinine, HbA1c) • <strong>Missing required fields</strong> (status, code) - triggers errors
+          <br>✓ <strong>Critical laboratory values</strong> (life-threatening potassium, troponin) - immediate error flagging • <strong>Data absent reasons</strong> (correct usage)
+          <br>✓ <strong>Invalid reference ranges</strong> (missing low/high/text) • <strong>Laboratory panels</strong> with hasMember relationships • <strong>Unusual values</strong> (outside typical ranges) - warnings
+          <br>✓ <strong>Missing performers</strong> (recommended field) • <strong>Invalid status codes</strong> • <strong>Data conflicts</strong> (dataAbsentReason with value present)
+        </p>
+      </div>
+
+      <div class="info-box">
+        <h3>What gets validated?</h3>
+        <div class="validation-list">
+          <div class="validation-item">
+            <strong>Core FHIR Rules:</strong> Required fields (status, code), data types, constraints, invariants, resource structure
+          </div>
+          <div class="validation-item">
+            <strong>Laboratory-Specific:</strong> LOINC code validation, UCUM unit compliance, reference range consistency, specimen type matching
+          </div>
+          <div class="validation-item">
+            <strong>Parameter Validation:</strong> 144+ laboratory parameters with typical ranges, critical value detection, unit conversion (mg/dL ↔ mmol/L, etc.)
+          </div>
+          <div class="validation-item">
+            <strong>Critical Values:</strong> Automatic detection of life-threatening results with immediate error flagging (e.g., critical potassium, troponin, glucose)
+          </div>
+          <div class="validation-item">
+            <strong>Workflow:</strong> Status progression validation, timing relationships (issued vs effective), panel structure (organizer, hasMember), reflex tests
+          </div>
+          <div class="validation-item">
+            <strong>Quality Checks:</strong> Specimen types, methods (SNOMED CT), performers (Organization/PractitionerRole), devices, interpretations, fasting requirements
+          </div>
+          <div class="validation-item">
+            <strong>Structure & Relationships:</strong> Bundle validation, resource relationships, reference integrity, duplicate ID detection, external reference warnings
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="panel">
-      <h2>File check</h2>
+      <h2>FHIR Observation check</h2>
 
-      <div class="status" [class.ready]="hasInput">
-        <span class="status-dot"></span>
-        <span>{{ hasInput ? 'Ready to run check' : 'Please add a file or text.' }}</span>
+      <div 
+        class="status" 
+        [class.ready]="hasInput"
+        [class.processing]="isProcessing"
+        role="status"
+        [attr.aria-live]="isProcessing ? 'polite' : 'off'"
+      >
+        <span class="status-dot" [attr.aria-hidden]="true"></span>
+        <span *ngIf="isProcessing">Validating data...</span>
+        <span *ngIf="!isProcessing">{{ hasInput ? 'Ready to run check' : 'Please add a file or text.' }}</span>
+      </div>
+
+      <div *ngIf="validationError" class="error-banner" role="alert">
+        <strong>Error:</strong> {{ validationError }}
+      </div>
+
+      <div class="info-box" *ngIf="!checkResults.length">
+        <h3>Validation capabilities</h3>
+        <div class="capability-grid">
+          <div class="capability-item">
+            <strong>✓ Core FHIR</strong>
+            <span>Required fields, data types, constraints, invariants</span>
+          </div>
+          <div class="capability-item">
+                <strong>✓ Laboratory</strong>
+                <span>144+ parameters, LOINC codes, UCUM units, reference ranges, critical values, unit conversion</span>
+          </div>
+          <div class="capability-item">
+            <strong>✓ Critical Values</strong>
+            <span>Automatic detection of life-threatening results</span>
+          </div>
+          <div class="capability-item">
+            <strong>✓ Panels & Batteries</strong>
+            <span>Panel structure, component validation, hasMember checks</span>
+          </div>
+          <div class="capability-item">
+            <strong>✓ Workflow</strong>
+            <span>Status progression, timing, issued dates, performers</span>
+          </div>
+          <div class="capability-item">
+            <strong>✓ Quality</strong>
+            <span>Specimen types, methods, devices, interpretations</span>
+          </div>
+          <div class="capability-item">
+            <strong>✓ Structure</strong>
+            <span>Bundle validation, resource relationships, references</span>
+          </div>
+          <div class="capability-item">
+            <strong>✓ Advanced</strong>
+            <span>Reflex tests, delta checks, fasting requirements</span>
+          </div>
+        </div>
       </div>
 
       <div class="results" *ngIf="checkResults.length; else noResults">
@@ -65,6 +249,51 @@
           </div>
           <p>{{ result.detail }}</p>
         </div>
+      </div>
+
+      <div class="issues" *ngIf="checkResults.length" role="region" aria-labelledby="issues-heading">
+        <div class="issues-header">
+          <h3 id="issues-heading">Issues</h3>
+          <div class="issue-stats" *ngIf="issues.length" role="status" aria-live="polite">
+            <span class="stat-item error-stat" [attr.aria-label]="'Error count: ' + getErrorCount()">
+              {{ getErrorCount() }} errors
+            </span>
+            <span class="stat-item warn-stat" [attr.aria-label]="'Warning count: ' + getWarnCount()">
+              {{ getWarnCount() }} warnings
+            </span>
+          </div>
+        </div>
+        <div class="issue-list" *ngIf="issues.length; else noIssues" role="list">
+          <div 
+            class="issue" 
+            *ngFor="let issue of issues; trackBy: trackByIssue"
+            role="listitem"
+            [attr.aria-label]="issue.severity + ': ' + issue.label"
+          >
+            <span
+              class="badge"
+              [class.ok]="issue.severity === 'ok'"
+              [class.warn]="issue.severity === 'warn'"
+              [class.error]="issue.severity === 'error'"
+              [attr.aria-label]="'Severity: ' + issue.severity"
+            >
+              {{ issue.severity.toUpperCase() }}
+            </span>
+            <div>
+              <strong>{{ issue.label }}</strong>
+              <p>{{ issue.detail }}</p>
+              <span class="issue-location" [attr.aria-label]="'Location: ' + issue.location">{{ issue.location }}</span>
+            </div>
+          </div>
+        </div>
+        <ng-template #noIssues>
+          <div class="success-message">
+              <p class="placeholder">✓ No issues detected. All validations passed!</p>
+              <div class="validation-summary">
+                <p><strong>Comprehensive validation completed:</strong> All 144+ laboratory parameters checked, core FHIR rules validated, reference ranges verified, UCUM units confirmed, critical values screened, workflow validated, structure integrity confirmed, and resource relationships verified.</p>
+              </div>
+          </div>
+        </ng-template>
       </div>
 
       <ng-template #noResults>
