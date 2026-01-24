@@ -8,6 +8,7 @@ A tool for validating FHIR R4 **Observation** and **DiagnosticReport** resources
 
 - **Development:** `npm start` — serves at `http://localhost:4200/`
 - **Production build:** `npm run build` — output in `dist/`
+- **GitHub Pages:** The app is deployed via GitHub Actions to **https://jan92.github.io/Data_Curation_Checker/** when you push to `main` or `master`.
 
 ---
 
