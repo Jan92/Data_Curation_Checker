@@ -105,6 +105,15 @@
           />
           <small id="file-hint" class="field-hint">Select a JSON, NDJSON, or text file with FHIR Observation and/or DiagnosticReport resources (max 10MB)</small>
         </label>
+        <button
+          class="link"
+          type="button"
+          (click)="downloadSampleFile()"
+          [disabled]="isProcessing"
+          aria-label="Download sample JSON file for upload and analysis"
+        >
+          Download Sample file
+        </button>
         <div class="file-meta" *ngIf="selectedFileName">
           <div>
             <strong>{{ selectedFileName }}</strong>
@@ -144,7 +153,7 @@ Or: Bundle / JSON array / NDJSON"
           Load example data
         </button>
         <p class="demo-hint">
-          <strong>Try it out!</strong> Load sample data: Observations (valid, missing fields, critical values, panels, dataAbsentReason) and a DiagnosticReport. Shows typical errors and warnings.
+          <strong>Try it out!</strong> <strong>Load example data</strong>: randomly picks one of 3 small examples (all valid, or missing status / dataAbsentReason+value, etc.) → each run can show different errors and warnings. <strong>Download Sample file</strong>: comprehensive set with many deliberate issues → upload and run to see lots of findings.
         </p>
       </div>
 

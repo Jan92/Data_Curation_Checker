@@ -104,17 +104,181 @@ export class AppComponent {
   }
 
   /**
-   * Loads example FHIR Observation data for demonstration
+   * Loads a small, mostly-valid example into the textarea (fewer issues than the downloadable sample file)
    */
   loadExampleData(): void {
     this.clearFile();
-    const exampleData = this.generateExampleData();
+    const exampleData = this.generateLoadExampleData();
     this.inputText = JSON.stringify(exampleData, null, 2);
     this.clearResults();
   }
 
   /**
-   * Generates example FHIR data (Observations and a DiagnosticReport) with various validation scenarios
+   * Downloads a generated sample JSON file (Observations and DiagnosticReport) for upload and analysis
+   */
+  downloadSampleFile(): void {
+    const data = this.generateExampleData();
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sample-fhir-observations-and-report.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Picks one of 3 example variants at random for "Load example data"
+   */
+  private generateLoadExampleData(): (Partial<Observation> | Partial<DiagnosticReport>)[] {
+    const variants = [
+      () => this.generateLoadExampleVariant1(),
+      () => this.generateLoadExampleVariant2(),
+      () => this.generateLoadExampleVariant3()
+    ];
+    return variants[Math.floor(Math.random() * 3)]();
+  }
+
+  /** Variant 1: All valid → 0 errors, 0 warnings */
+  private generateLoadExampleVariant1(): (Partial<Observation> | Partial<DiagnosticReport>)[] {
+    const now = new Date().toISOString();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    return [
+      {
+        resourceType: 'Observation',
+        id: 'obs-a',
+        status: 'final',
+        category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'laboratory', display: 'Laboratory' }] }],
+        code: { coding: [{ system: 'http://loinc.org', code: '2339-0', display: 'Glucose [Mass/volume] in Blood' }], text: 'Glucose' },
+        subject: { reference: 'Patient/example' },
+        effectiveDateTime: yesterday,
+        issued: now,
+        valueQuantity: { value: 95, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' },
+        referenceRange: [{ low: { value: 70, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' }, high: { value: 100, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' } }],
+        performer: [{ reference: 'Organization/lab-example' }],
+        specimen: { reference: 'Specimen/blood-example' }
+      },
+      {
+        resourceType: 'Observation',
+        id: 'obs-b',
+        status: 'final',
+        category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'laboratory', display: 'Laboratory' }] }],
+        code: { coding: [{ system: 'http://loinc.org', code: '2160-0', display: 'Creatinine [Mass/volume] in Serum or Plasma' }], text: 'Creatinine' },
+        subject: { reference: 'Patient/example' },
+        effectiveDateTime: now,
+        issued: now,
+        valueQuantity: { value: 1.0, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' },
+        referenceRange: [{ low: { value: 0.6, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' }, high: { value: 1.2, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' } }],
+        performer: [{ reference: 'Organization/lab-example' }],
+        specimen: { reference: 'Specimen/blood-example' }
+      },
+      {
+        resourceType: 'DiagnosticReport',
+        id: 'dr-1',
+        status: 'final',
+        category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0074', code: 'LAB', display: 'Laboratory' }] }],
+        code: { coding: [{ system: 'http://loinc.org', code: '58410-2', display: 'Short blood count panel' }] },
+        subject: { reference: 'Patient/example' },
+        effectiveDateTime: now,
+        issued: now,
+        performer: [{ reference: 'Organization/lab-example' }],
+        result: [{ reference: 'Observation/obs-a' }, { reference: 'Observation/obs-b' }]
+      } as Partial<DiagnosticReport>
+    ];
+  }
+
+  /** Variant 2: Missing required status (error) + DR without performer (warn) */
+  private generateLoadExampleVariant2(): (Partial<Observation> | Partial<DiagnosticReport>)[] {
+    const now = new Date().toISOString();
+    return [
+      {
+        resourceType: 'Observation',
+        id: 'obs-x',
+        status: 'final',
+        category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'laboratory', display: 'Laboratory' }] }],
+        code: { coding: [{ system: 'http://loinc.org', code: '2339-0', display: 'Glucose [Mass/volume] in Blood' }], text: 'Glucose' },
+        subject: { reference: 'Patient/example' },
+        effectiveDateTime: now,
+        issued: now,
+        valueQuantity: { value: 102, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' },
+        referenceRange: [{ low: { value: 70, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' }, high: { value: 100, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' } }],
+        performer: [{ reference: 'Organization/lab-example' }],
+        specimen: { reference: 'Specimen/blood-example' }
+      },
+      {
+        resourceType: 'Observation',
+        id: 'obs-y',
+        // missing status → error
+        code: { coding: [{ system: 'http://loinc.org', code: '2160-0', display: 'Creatinine [Mass/volume] in Serum or Plasma' }], text: 'Creatinine' },
+        subject: { reference: 'Patient/example' },
+        effectiveDateTime: now,
+        valueQuantity: { value: 1.1, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' },
+        performer: [{ reference: 'Organization/lab-example' }]
+      },
+      {
+        resourceType: 'DiagnosticReport',
+        id: 'dr-2',
+        status: 'final',
+        category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0074', code: 'LAB', display: 'Laboratory' }] }],
+        code: { coding: [{ system: 'http://loinc.org', code: '58410-2', display: 'Short blood count panel' }] },
+        subject: { reference: 'Patient/example' },
+        effectiveDateTime: now,
+        issued: now,
+        // missing performer → warning
+        result: [{ reference: 'Observation/obs-x' }, { reference: 'Observation/obs-y' }]
+      } as Partial<DiagnosticReport>
+    ];
+  }
+
+  /** Variant 3: dataAbsentReason with value (error) + DR without category (warn) */
+  private generateLoadExampleVariant3(): (Partial<Observation> | Partial<DiagnosticReport>)[] {
+    const now = new Date().toISOString();
+    return [
+      {
+        resourceType: 'Observation',
+        id: 'obs-p',
+        status: 'final',
+        category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'laboratory', display: 'Laboratory' }] }],
+        code: { coding: [{ system: 'http://loinc.org', code: '2160-0', display: 'Creatinine [Mass/volume] in Serum or Plasma' }], text: 'Creatinine' },
+        subject: { reference: 'Patient/example' },
+        effectiveDateTime: now,
+        issued: now,
+        valueQuantity: { value: 1.0, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' },
+        referenceRange: [{ low: { value: 0.6, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' }, high: { value: 1.2, unit: 'mg/dL', system: 'http://unitsofmeasure.org', code: 'mg/dL' } }],
+        performer: [{ reference: 'Organization/lab-example' }],
+        specimen: { reference: 'Specimen/blood-example' }
+      },
+      {
+        resourceType: 'Observation',
+        id: 'obs-q',
+        status: 'final',
+        category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'laboratory', display: 'Laboratory' }] }],
+        code: { coding: [{ system: 'http://loinc.org', code: '718-7', display: 'Hemoglobin [Mass/volume] in Blood' }], text: 'Hemoglobin' },
+        subject: { reference: 'Patient/example' },
+        effectiveDateTime: now,
+        issued: now,
+        valueQuantity: { value: 14.0, unit: 'g/dL', system: 'http://unitsofmeasure.org', code: 'g/dL' },
+        dataAbsentReason: { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/data-absent-reason', code: 'error' }] }
+        // dataAbsentReason + value → error
+      },
+      {
+        resourceType: 'DiagnosticReport',
+        id: 'dr-3',
+        status: 'final',
+        // missing category → warning
+        code: { coding: [{ system: 'http://loinc.org', code: '58410-2', display: 'Short blood count panel' }] },
+        subject: { reference: 'Patient/example' },
+        effectiveDateTime: now,
+        issued: now,
+        performer: [{ reference: 'Organization/lab-example' }],
+        result: [{ reference: 'Observation/obs-p' }, { reference: 'Observation/obs-q' }]
+      } as Partial<DiagnosticReport>
+    ];
+  }
+
+  /**
+   * Generates example FHIR data (Observations and a DiagnosticReport) with various validation scenarios for the downloadable sample file
    */
   private generateExampleData(): (Partial<Observation> | Partial<DiagnosticReport>)[] {
     const now = new Date().toISOString();
