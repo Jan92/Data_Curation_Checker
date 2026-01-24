@@ -1,9 +1,9 @@
 /**
- * Types for FHIR Observation validation results.
+ * Types for FHIR Observation and DiagnosticReport validation results.
  * Used by both the UI and the headless checks API.
  */
 
-import type { Observation } from '../models/fhir.types';
+import type { Observation, DiagnosticReport } from '../models/fhir.types';
 
 export type CheckStatus = 'ok' | 'warn' | 'error';
 
@@ -25,6 +25,7 @@ export interface ParseResult {
   ok: boolean;
   type: string;
   resources: Observation[];
+  diagnosticReports: DiagnosticReport[];
   error?: string;
 }
 

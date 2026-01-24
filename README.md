@@ -1,6 +1,6 @@
 # Data Curation Checker
 
-A tool for validating FHIR R4 Observation resources. It checks structure, terminology, references, and laboratory-specific rules. You can run it in the browser or use the validation logic **without the UI** (e.g. from Node, scripts, or CI).
+A tool for validating FHIR R4 **Observation** and **DiagnosticReport** resources. It checks structure, terminology, references, and laboratory-specific rules. You can run it in the browser or use the validation logic **without the UI** (e.g. from Node, scripts, or CI).
 
 ---
 
@@ -13,26 +13,21 @@ A tool for validating FHIR R4 Observation resources. It checks structure, termin
 
 ## Supported input formats
 
-- FHIR JSON **Bundle** (e.g. `type: "collection"` with `entry[]`)
-- JSON **array** of resources
+- FHIR JSON **Bundle** (e.g. `type: "collection"` with `entry[]`) containing Observation and/or DiagnosticReport
+- JSON **array** of Observation and/or DiagnosticReport resources
 - **NDJSON** (one JSON resource per line)
-- Single **Observation** (JSON object)
+- Single **Observation** or **DiagnosticReport** (JSON object)
 
 ---
 
 ## What is validated
 
-- **Structure:** Bundle format, resource shape, required fields (`status`, `code`), `value[x]` vs `dataAbsentReason`, organizer rules.
-- **Terminology:** CodeableConcepts (coding, system, display), LOINC format, preferred systems (LOINC, SNOMED CT).
-- **References:** `subject`, `specimen`, `performer`, `device`, `basedOn`, etc., and reference targets in the same set.
-- **Dates:** `effective`, `issued` and consistency.
-- **URLs:** `meta.implicitRules`, `meta.source`, and similar.
-- **Laboratory (LOINC-coded):** Parameter-specific rules for 140+ common lab parameters (e.g. glucose, creatinine, HbA1c, CBC, liver, cardiac, thyroid, coagulation, tumor markers, urine, hormones, vitamins):
-  - UCUM units and reference ranges  
-  - Critical low/high  
-  - Specimen, method, timing, interpretation  
-  - Panel/component, reflex, delta checks  
-  - Status workflow, performer, device, dataAbsentReason
+- **Observation:** Structure, required fields (`status`, `code`), `value[x]` vs `dataAbsentReason`, organizer rules; CodeableConcepts, references, dates, URLs.
+- **DiagnosticReport:** Required `status`, `code`; recommended `category`, `subject`, `effective`/`issued`, `performer`, `result` (Observation references); reference and CodeableConcept checks. See [FHIR DiagnosticReport](https://build.fhir.org/diagnosticreport.html).
+- **Laboratory (Observation, LOINC-coded):** Parameter-specific rules for many common lab parameters (e.g. glucose, creatinine, HbA1c, CBC, liver, cardiac, thyroid, coagulation, tumor markers, urine, hormones, vitamins):
+  - UCUM units and reference ranges, critical low/high
+  - Specimen, method, timing, interpretation; panel/component, reflex, delta checks; status workflow, performer, device, dataAbsentReason
+- **Structure:** Bundle format, resource relationships, reference integrity.
 
 ---
 
@@ -71,12 +66,13 @@ validateFhirObservations(
 {
   parseResult: {
     ok: boolean;
-    type: string;        // e.g. 'JSON Object', 'NDJSON', 'JSON Array'
+    type: string;              // e.g. 'JSON Object', 'NDJSON', 'JSON Array'
     resources: Observation[];
-    error?: string;      // set when ok is false
+    diagnosticReports: DiagnosticReport[];
+    error?: string;            // set when ok is false
   };
-  issues: CheckIssue[];   // { severity, label, detail, location }
-  checkResults: CheckResult[];  // { label, status, statusLabel, detail }
+  issues: CheckIssue[];        // { severity, label, detail, location }
+  checkResults: CheckResult[]; // { label, status, statusLabel, detail }
 }
 ```
 

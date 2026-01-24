@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Observation } from './models/fhir.types';
+import { Observation, DiagnosticReport } from './models/fhir.types';
 import { validateFhirObservations, type CheckResult, type CheckIssue } from './checks/fhir-observation-checks';
 
 @Component({
@@ -114,9 +114,9 @@ export class AppComponent {
   }
 
   /**
-   * Generates example FHIR Observation data with various validation scenarios
+   * Generates example FHIR data (Observations and a DiagnosticReport) with various validation scenarios
    */
-  private generateExampleData(): Partial<Observation>[] {
+  private generateExampleData(): (Partial<Observation> | Partial<DiagnosticReport>)[] {
     const now = new Date().toISOString();
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
@@ -558,7 +558,41 @@ export class AppComponent {
           ]
         }
         // dataAbsentReason with value - will trigger error
-      }
+      },
+      // Example 11: DiagnosticReport (lab report with result references)
+      {
+        resourceType: 'DiagnosticReport',
+        id: 'dr-1',
+        status: 'final',
+        category: [
+          {
+            coding: [
+              {
+                system: 'http://terminology.hl7.org/CodeSystem/v2-0074',
+                code: 'LAB',
+                display: 'Laboratory'
+              }
+            ]
+          }
+        ],
+        code: {
+          coding: [
+            {
+              system: 'http://loinc.org',
+              code: '58410-2',
+              display: 'Short blood count panel'
+            }
+          ]
+        },
+        subject: { reference: 'Patient/example' },
+        effectiveDateTime: now,
+        issued: now,
+        performer: [{ reference: 'Organization/lab-example' }],
+        result: [
+          { reference: 'Observation/obs-1' },
+          { reference: 'Observation/obs-3' }
+        ]
+      } as Partial<DiagnosticReport>
     ];
   }
 

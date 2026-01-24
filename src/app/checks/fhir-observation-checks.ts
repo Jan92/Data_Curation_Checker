@@ -3,7 +3,7 @@
  * Pure TypeScript – no Angular. Use from UI, Node, or CLI.
  */
 
-import { Observation, Bundle } from '../models/fhir.types';
+import { Observation, Bundle, DiagnosticReport } from '../models/fhir.types';
 import type { CheckResult, CheckIssue, CheckStatus, ParseResult, ValidationReport, ValidateOptions } from './types';
 
 export type { CheckResult, CheckIssue, CheckStatus, ParseResult, ValidationReport, ValidateOptions };
@@ -19,8 +19,8 @@ export class FhirObservationChecker {
       return { parseResult, issues, checkResults };
     }
 
-    const { issues, observationCount, laboratoryCount } = this.performValidation(parseResult, content, source);
-    const checkResults = this.generateValidationResults(issues, observationCount, laboratoryCount, parseResult, source, sourceDetail);
+    const { issues, observationCount, laboratoryCount, diagnosticReportCount } = this.performValidation(parseResult, content, source);
+    const checkResults = this.generateValidationResults(issues, observationCount, laboratoryCount, diagnosticReportCount, parseResult, source, sourceDetail);
     return { parseResult, issues, checkResults };
   }
 
@@ -46,6 +46,7 @@ export class FhirObservationChecker {
         ok: false,
         type: 'Empty',
         resources: [],
+        diagnosticReports: [],
         error: 'Input is empty.'
       };
     }
@@ -53,46 +54,60 @@ export class FhirObservationChecker {
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
       try {
         const parsed = JSON.parse(trimmed);
+        const { observations, diagnosticReports } = this.extractObservationsAndDiagnosticReports(parsed);
         return {
           ok: true,
           type: Array.isArray(parsed) ? 'JSON Array' : 'JSON Object',
-          resources: this.extractResources(parsed)
+          resources: observations,
+          diagnosticReports
         };
       } catch (error) {
         return {
           ok: false,
           type: 'JSON',
           resources: [],
+          diagnosticReports: [],
           error: error instanceof Error ? error.message : 'Invalid JSON.'
         };
       }
     }
 
     const lines = trimmed.split(/\r?\n/).filter((line) => line.trim());
-    const resources: Observation[] = [];
+    const raw: unknown[] = [];
     for (let i = 0; i < lines.length; i += 1) {
       try {
-        resources.push(JSON.parse(lines[i]));
+        raw.push(JSON.parse(lines[i]));
       } catch (error) {
         return {
           ok: false,
           type: 'NDJSON',
           resources: [],
+          diagnosticReports: [],
           error: `Invalid NDJSON on line ${i + 1}.`
         };
       }
     }
 
+    const { observations, diagnosticReports } = this.extractObservationsAndDiagnosticReports(raw);
     return {
       ok: true,
       type: 'NDJSON',
-      resources: this.extractResources(resources)
+      resources: observations,
+      diagnosticReports
     };
   }
 
-  private extractResources(parsed: unknown): Observation[] {
+  private extractObservationsAndDiagnosticReports(parsed: unknown): { observations: Observation[]; diagnosticReports: DiagnosticReport[] } {
+    const observations: Observation[] = [];
+    const diagnosticReports: DiagnosticReport[] = [];
+
     if (Array.isArray(parsed)) {
-      return parsed.flatMap((entry) => this.extractResources(entry));
+      for (const entry of parsed) {
+        const r = this.extractObservationsAndDiagnosticReports(entry);
+        observations.push(...r.observations);
+        diagnosticReports.push(...r.diagnosticReports);
+      }
+      return { observations, diagnosticReports };
     }
 
     if (
@@ -104,41 +119,41 @@ export class FhirObservationChecker {
       Array.isArray((parsed as any).entry)
     ) {
       const bundle = parsed as Bundle;
-      return bundle.entry
-        ?.map((entry) => entry?.resource)
-        .filter((resource): resource is Observation => 
-          resource?.resourceType === 'Observation'
-        ) ?? [];
+      for (const entry of bundle.entry ?? []) {
+        const res = entry?.resource;
+        if (res?.resourceType === 'Observation') observations.push(res as Observation);
+        if (res?.resourceType === 'DiagnosticReport') diagnosticReports.push(res as DiagnosticReport);
+      }
+      return { observations, diagnosticReports };
     }
 
-    if (
-      parsed &&
-      typeof parsed === 'object' &&
-      'resourceType' in parsed &&
-      (parsed as any).resourceType === 'Observation'
-    ) {
-      return [parsed as Observation];
+    if (parsed && typeof parsed === 'object' && 'resourceType' in parsed) {
+      const rt = (parsed as any).resourceType;
+      if (rt === 'Observation') return { observations: [parsed as Observation], diagnosticReports: [] };
+      if (rt === 'DiagnosticReport') return { observations: [], diagnosticReports: [parsed as DiagnosticReport] };
     }
 
-    return [];
+    return { observations, diagnosticReports };
   }
 
   private performValidation(
     parseResult: ParseResult,
     content: string,
     source: string
-  ): { issues: CheckIssue[]; observationCount: number; laboratoryCount: number } {
+  ): { issues: CheckIssue[]; observationCount: number; laboratoryCount: number; diagnosticReportCount: number } {
     const resources = parseResult.resources;
+    const diagnosticReports = parseResult.diagnosticReports ?? [];
     const issues: CheckIssue[] = [];
     let observationCount = 0;
     let laboratoryCount = 0;
+    const diagnosticReportCount = diagnosticReports.length;
 
     // Validate overall structure
-    if (resources.length === 0) {
+    if (resources.length === 0 && diagnosticReports.length === 0) {
       issues.push({
         severity: 'error',
         label: 'No resources found',
-        detail: 'The input does not contain any valid FHIR resources.',
+        detail: 'The input does not contain any valid FHIR resources (Observation or DiagnosticReport).',
         location: source
       });
     }
@@ -148,9 +163,9 @@ export class FhirObservationChecker {
       issues.push(...this.validateBundleStructure(content, source));
     }
 
-    // Process each resource
+    // Process each Observation
     resources.forEach((resource, index) => {
-      const location = `Item ${index + 1}`;
+      const location = `Observation ${index + 1}`;
       if (!resource || typeof resource !== 'object') {
         issues.push({
           severity: 'error',
@@ -161,7 +176,6 @@ export class FhirObservationChecker {
         return;
       }
 
-      // Validate resource structure
       issues.push(...this.validateResourceStructure(resource, location));
 
       if (resource.resourceType !== 'Observation') {
@@ -181,27 +195,51 @@ export class FhirObservationChecker {
       issues.push(...this.validateObservation(resource, location));
     });
 
-    // Validate resource relationships
+    // Process each DiagnosticReport
+    diagnosticReports.forEach((dr, index) => {
+      const location = `DiagnosticReport ${index + 1}`;
+      if (!dr || typeof dr !== 'object') {
+        issues.push({
+          severity: 'error',
+          label: 'Invalid resource',
+          detail: 'Resource is not a valid JSON object.',
+          location
+        });
+        return;
+      }
+      issues.push(...this.validateResourceStructure(dr, location));
+      issues.push(...this.validateDiagnosticReport(dr, location));
+    });
+
+    // Validate resource relationships (Observations only for now)
     if (resources.length > 1) {
       issues.push(...this.validateResourceRelationships(resources));
     }
 
-    if (observationCount === 0) {
+    if (observationCount === 0 && diagnosticReports.length === 0) {
       issues.push({
         severity: 'error',
         label: 'No observations found',
-        detail: 'The dataset contains no Observation resources.',
+        detail: 'The dataset contains no Observation or DiagnosticReport resources.',
+        location: source
+      });
+    } else if (observationCount === 0 && diagnosticReports.length > 0) {
+      issues.push({
+        severity: 'warn',
+        label: 'No Observation resources',
+        detail: 'Only DiagnosticReport(s) found. Observation.result references cannot be validated against inline resources.',
         location: source
       });
     }
 
-    return { issues, observationCount, laboratoryCount };
+    return { issues, observationCount, laboratoryCount, diagnosticReportCount };
   }
 
   private generateValidationResults(
     issues: CheckIssue[],
     observationCount: number,
     laboratoryCount: number,
+    diagnosticReportCount: number,
     parseResult: ParseResult,
     source: string,
     sourceDetail?: string
@@ -225,9 +263,15 @@ export class FhirObservationChecker {
       },
       {
         label: 'Observations',
-        status: observationCount > 0 ? 'ok' : 'error',
-        statusLabel: observationCount > 0 ? 'OK' : 'Error',
+        status: observationCount > 0 ? 'ok' : (diagnosticReportCount > 0 ? 'warn' : 'error'),
+        statusLabel: observationCount > 0 ? 'OK' : (diagnosticReportCount > 0 ? 'Notice' : 'Error'),
         detail: `${observationCount} Observation resource(s) found.`
+      },
+      {
+        label: 'Diagnostic reports',
+        status: diagnosticReportCount > 0 ? 'ok' : 'ok',
+        statusLabel: 'OK',
+        detail: `${diagnosticReportCount} DiagnosticReport resource(s) found.`
       },
       {
         label: 'Laboratory observations',
@@ -954,6 +998,147 @@ export class FhirObservationChecker {
     issues.push(...this.validateURLs(observation, location));
 
     return issues;
+  }
+
+  private validateDiagnosticReport(dr: DiagnosticReport, location: string): CheckIssue[] {
+    const issues: CheckIssue[] = [];
+
+    if (!dr.status) {
+      issues.push({
+        severity: 'error',
+        label: 'Missing status',
+        detail: 'DiagnosticReport.status is required.',
+        location
+      });
+    } else if (!this.isValidDiagnosticReportStatus(dr.status)) {
+      issues.push({
+        severity: 'error',
+        label: 'Invalid status',
+        detail: `DiagnosticReport.status "${dr.status}" is not a valid value.`,
+        location
+      });
+    }
+
+    if (!this.hasCode(dr.code)) {
+      issues.push({
+        severity: 'error',
+        label: 'Missing code',
+        detail: 'DiagnosticReport.code is required.',
+        location
+      });
+    } else {
+      issues.push(...this.validateCodeableConcept(dr.code, location, 'code'));
+    }
+
+    if (Array.isArray(dr.category) && dr.category.length > 0) {
+      dr.category.forEach((cat: any, i: number) => {
+        issues.push(...this.validateCodeableConcept(cat, `${location} · category[${i}]`, 'category'));
+      });
+    } else {
+      issues.push({
+        severity: 'warn',
+        label: 'Missing category',
+        detail: 'DiagnosticReport.category is recommended for searching and display.',
+        location
+      });
+    }
+
+    if (!dr.subject) {
+      issues.push({
+        severity: 'warn',
+        label: 'Missing subject',
+        detail: 'DiagnosticReport.subject is recommended.',
+        location
+      });
+    }
+    if (dr.subject) {
+      issues.push(...this.validateReference(dr.subject, location, 'subject'));
+    }
+
+    const hasEffective = !!(dr.effectiveDateTime || (dr.effectivePeriod && (dr.effectivePeriod.start || dr.effectivePeriod.end)) || dr.issued);
+    if (!hasEffective) {
+      issues.push({
+        severity: 'warn',
+        label: 'Missing effective or issued',
+        detail: 'At least one of effectiveDateTime, effectivePeriod, or issued is recommended.',
+        location
+      });
+    }
+    if (dr.effectiveDateTime || dr.effectivePeriod || dr.issued) {
+      issues.push(...this.validateDates(dr as any, location));
+    }
+
+    if (!Array.isArray(dr.performer) || dr.performer.length === 0) {
+      issues.push({
+        severity: 'warn',
+        label: 'Missing performer',
+        detail: 'DiagnosticReport.performer is recommended (responsible diagnostic service).',
+        location
+      });
+    } else {
+      dr.performer.forEach((p: any, i: number) => {
+        issues.push(...this.validateReference(p, `${location} · performer[${i}]`, 'performer'));
+      });
+    }
+
+    if (dr.encounter) {
+      issues.push(...this.validateReference(dr.encounter, location, 'encounter'));
+    }
+    if (Array.isArray(dr.resultsInterpreter)) {
+      dr.resultsInterpreter.forEach((r: any, i: number) => {
+        issues.push(...this.validateReference(r, `${location} · resultsInterpreter[${i}]`, 'resultsInterpreter'));
+      });
+    }
+    if (Array.isArray(dr.specimen)) {
+      dr.specimen.forEach((s: any, i: number) => {
+        issues.push(...this.validateReference(s, `${location} · specimen[${i}]`, 'specimen'));
+      });
+    }
+    if (Array.isArray(dr.result)) {
+      dr.result.forEach((r: any, i: number) => {
+        issues.push(...this.validateReference(r, `${location} · result[${i}]`, 'result'));
+      });
+      if (dr.result.length === 0) {
+        issues.push({
+          severity: 'warn',
+          label: 'Empty result',
+          detail: 'DiagnosticReport.result is typically non-empty for lab and pathology reports.',
+          location
+        });
+      }
+    } else if (this.isLikelyLabReport(dr) && !Array.isArray(dr.result)) {
+      issues.push({
+        severity: 'warn',
+        label: 'Missing result',
+        detail: 'DiagnosticReport.result is recommended for laboratory and pathology reports.',
+        location
+      });
+    }
+
+    return issues;
+  }
+
+  private isValidDiagnosticReportStatus(s: string): boolean {
+    const allowed: DiagnosticReport['status'][] = [
+      'registered', 'partial', 'preliminary', 'modified', 'final', 'amended',
+      'corrected', 'appended', 'cancelled', 'entered-in-error', 'unknown'
+    ];
+    return allowed.includes(s as any);
+  }
+
+  private isLikelyLabReport(dr: DiagnosticReport): boolean {
+    const cat = dr.category;
+    if (Array.isArray(cat)) {
+      const lab = cat.some((c: any) =>
+        (c?.coding || []).some((x: any) =>
+          (String(x?.code || '')).toLowerCase() === 'laboratory' ||
+          (String(x?.display || '')).toLowerCase().includes('lab')
+        )
+      );
+      if (lab) return true;
+    }
+    const code = dr.code?.coding || [];
+    return code.some((c: any) => (c?.system || '').includes('loinc'));
   }
 
   private extractCodings(codeable: any): string[] {

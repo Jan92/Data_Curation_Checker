@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">Data Curation Checker</p>
       <h1>Data Curation Checker</h1>
-      <p class="subtitle">Professional-grade validation of FHIR Observation resources with comprehensive laboratory medicine checks. Validates 144+ laboratory parameters with critical value detection, workflow validation, and structural integrity checks. Supports JSON Bundles, arrays, NDJSON, and single resources.</p>
+      <p class="subtitle">Validation of FHIR Observation and DiagnosticReport resources with laboratory medicine checks, critical value detection, workflow and structural rules. Supports JSON Bundles, arrays, NDJSON, and single resources.</p>
     </div>
     <button 
       class="primary" 
@@ -11,7 +11,7 @@
       (click)="runCheck()" 
       [disabled]="!hasInput || isProcessing"
       [attr.aria-busy]="isProcessing"
-      aria-label="Run validation check on FHIR Observation data"
+      aria-label="Run validation check on FHIR data"
     >
       <span *ngIf="!isProcessing">Run check</span>
       <span *ngIf="isProcessing" class="loading-text">
@@ -28,12 +28,11 @@
       <div class="info-box">
         <h3>Supported file formats</h3>
         <ul class="format-list">
-          <li><strong>JSON Bundle:</strong> FHIR Bundle with Observation resources in <code>entry[].resource</code> (recommended for multiple observations)</li>
-          <li><strong>JSON Array:</strong> Array of Observation resources <code ngNonBindable>[&#123;...&#125;, &#123;...&#125;]</code> (simple format for multiple observations)</li>
-          <li><strong>Single JSON:</strong> Single Observation resource <code ngNonBindable>&#123;resourceType: "Observation", ...&#125;</code> (for single observation validation)</li>
-          <li><strong>NDJSON:</strong> Newline-delimited JSON (one Observation per line) - efficient for large datasets</li>
-          <li><strong>File extensions:</strong> .json, .ndjson, .txt (or any text file containing valid JSON)</li>
-          <li><strong>File size limit:</strong> Maximum 10MB per file</li>
+          <li><strong>JSON Bundle:</strong> FHIR Bundle with Observation and/or DiagnosticReport in <code>entry[].resource</code></li>
+          <li><strong>JSON Array:</strong> Array of Observation and/or DiagnosticReport resources</li>
+          <li><strong>Single JSON:</strong> Single Observation <code ngNonBindable>&#123;resourceType: "Observation", ...&#125;</code> or DiagnosticReport <code ngNonBindable>&#123;resourceType: "DiagnosticReport", ...&#125;</code></li>
+          <li><strong>NDJSON:</strong> Newline-delimited JSON (one resource per line)</li>
+          <li><strong>File extensions:</strong> .json, .ndjson, .txt (max 10MB)</li>
         </ul>
         <details class="example-details">
           <summary>Example formats</summary>
@@ -78,6 +77,13 @@
       "resourceType": "Observation",
       ...
     }
+  &#125;, &#123;
+    "resource": &#123;
+      "resourceType": "DiagnosticReport",
+      "status": "final",
+      "code": &#123; "coding": [&#123; "system": "http://loinc.org", "code": "58410-2" &#125;] &#125;,
+      "result": [&#123; "reference": "Observation/obs-1" &#125;]
+    }
   &#125;]
 &#125;</code></pre>
             </div>
@@ -95,9 +101,9 @@
             (change)="handleFileSelected($event)"
             [disabled]="isProcessing"
             aria-describedby="file-hint"
-            aria-label="Upload FHIR Observation file"
+            aria-label="Upload FHIR Observation or DiagnosticReport file"
           />
-          <small id="file-hint" class="field-hint">Select a JSON, NDJSON, or text file containing FHIR Observation resources (max 10MB)</small>
+          <small id="file-hint" class="field-hint">Select a JSON, NDJSON, or text file with FHIR Observation and/or DiagnosticReport resources (max 10MB)</small>
         </label>
         <div class="file-meta" *ngIf="selectedFileName">
           <div>
@@ -111,22 +117,19 @@
       <div class="divider">or</div>
 
       <label class="field">
-        <span>Paste FHIR Observation data set</span>
+        <span>Paste FHIR data (Observation and/or DiagnosticReport)</span>
         <textarea
           rows="10"
           [(ngModel)]="inputText"
           [disabled]="isProcessing"
           (input)="clearResults()"
-          placeholder="Example formats:
-Single Observation: {&quot;resourceType&quot;: &quot;Observation&quot;, &quot;status&quot;: &quot;final&quot;, ...}
-
-JSON Array: [{&quot;resourceType&quot;: &quot;Observation&quot;, ...}, ...]
-
-FHIR Bundle: {&quot;resourceType&quot;: &quot;Bundle&quot;, &quot;entry&quot;: [{&quot;resource&quot;: {&quot;resourceType&quot;: &quot;Observation&quot;}}]}"
+          placeholder="Example: {&quot;resourceType&quot;: &quot;Observation&quot;, &quot;status&quot;: &quot;final&quot;, ...}
+Or: {&quot;resourceType&quot;: &quot;DiagnosticReport&quot;, &quot;status&quot;: &quot;final&quot;, &quot;code&quot;: {...}, &quot;result&quot;: [...]}
+Or: Bundle / JSON array / NDJSON"
           aria-describedby="textarea-hint"
-          aria-label="Paste FHIR Observation data set"
+          aria-label="Paste FHIR Observation or DiagnosticReport data"
         ></textarea>
-        <small id="textarea-hint" class="field-hint">Paste JSON directly into this field. Supports all formats listed above.</small>
+        <small id="textarea-hint" class="field-hint">Paste JSON. Supports Observation, DiagnosticReport, Bundle, array, or NDJSON.</small>
       </label>
 
       <div class="demo-section">
@@ -135,17 +138,13 @@ FHIR Bundle: {&quot;resourceType&quot;: &quot;Bundle&quot;, &quot;entry&quot;: [
           type="button" 
           (click)="loadExampleData()"
           [disabled]="isProcessing"
-          aria-label="Load example FHIR Observation data for demonstration"
+          aria-label="Load example FHIR data for demonstration"
         >
           <span aria-hidden="true">📋</span>
           Load example data
         </button>
         <p class="demo-hint">
-          <strong>Try it out!</strong> Click to load sample FHIR Observation data with 10 comprehensive examples demonstrating various validation scenarios:
-          <br>✓ <strong>Valid observations</strong> with complete metadata (Glucose, Creatinine, HbA1c) • <strong>Missing required fields</strong> (status, code) - triggers errors
-          <br>✓ <strong>Critical laboratory values</strong> (life-threatening potassium, troponin) - immediate error flagging • <strong>Data absent reasons</strong> (correct usage)
-          <br>✓ <strong>Invalid reference ranges</strong> (missing low/high/text) • <strong>Laboratory panels</strong> with hasMember relationships • <strong>Unusual values</strong> (outside typical ranges) - warnings
-          <br>✓ <strong>Missing performers</strong> (recommended field) • <strong>Invalid status codes</strong> • <strong>Data conflicts</strong> (dataAbsentReason with value present)
+          <strong>Try it out!</strong> Load sample data: Observations (valid, missing fields, critical values, panels, dataAbsentReason) and a DiagnosticReport. Shows typical errors and warnings.
         </p>
       </div>
 
@@ -153,32 +152,23 @@ FHIR Bundle: {&quot;resourceType&quot;: &quot;Bundle&quot;, &quot;entry&quot;: [
         <h3>What gets validated?</h3>
         <div class="validation-list">
           <div class="validation-item">
-            <strong>Core FHIR Rules:</strong> Required fields (status, code), data types, constraints, invariants, resource structure
+            <strong>Observation:</strong> Required fields (status, code), value vs dataAbsentReason, structure, CodeableConcepts, references, dates, URLs
           </div>
           <div class="validation-item">
-            <strong>Laboratory-Specific:</strong> LOINC code validation, UCUM unit compliance, reference range consistency, specimen type matching
+            <strong>DiagnosticReport:</strong> Status, code, category, subject, effective/issued, performer, result (Observation references), specimen, references
           </div>
           <div class="validation-item">
-            <strong>Parameter Validation:</strong> 144+ laboratory parameters with typical ranges, critical value detection, unit conversion (mg/dL ↔ mmol/L, etc.)
+            <strong>Laboratory (Observation):</strong> Common parameters (LOINC), UCUM units, reference ranges, critical value detection, specimen and method
           </div>
           <div class="validation-item">
-            <strong>Critical Values:</strong> Automatic detection of life-threatening results with immediate error flagging (e.g., critical potassium, troponin, glucose)
-          </div>
-          <div class="validation-item">
-            <strong>Workflow:</strong> Status progression validation, timing relationships (issued vs effective), panel structure (organizer, hasMember), reflex tests
-          </div>
-          <div class="validation-item">
-            <strong>Quality Checks:</strong> Specimen types, methods (SNOMED CT), performers (Organization/PractitionerRole), devices, interpretations, fasting requirements
-          </div>
-          <div class="validation-item">
-            <strong>Structure & Relationships:</strong> Bundle validation, resource relationships, reference integrity, duplicate ID detection, external reference warnings
+            <strong>Workflow & Structure:</strong> Bundle validation, panel/hasMember, timing, performers, resource relationships
           </div>
         </div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>FHIR Observation check</h2>
+      <h2>FHIR check</h2>
 
       <div 
         class="status" 
@@ -200,36 +190,20 @@ FHIR Bundle: {&quot;resourceType&quot;: &quot;Bundle&quot;, &quot;entry&quot;: [
         <h3>Validation capabilities</h3>
         <div class="capability-grid">
           <div class="capability-item">
-            <strong>✓ Core FHIR</strong>
-            <span>Required fields, data types, constraints, invariants</span>
+            <strong>✓ Observation</strong>
+            <span>Status, code, value/dataAbsentReason, concepts, references, dates</span>
           </div>
           <div class="capability-item">
-                <strong>✓ Laboratory</strong>
-                <span>144+ parameters, LOINC codes, UCUM units, reference ranges, critical values, unit conversion</span>
+            <strong>✓ DiagnosticReport</strong>
+            <span>Status, code, category, subject, effective/issued, performer, result</span>
           </div>
           <div class="capability-item">
-            <strong>✓ Critical Values</strong>
-            <span>Automatic detection of life-threatening results</span>
+            <strong>✓ Laboratory</strong>
+            <span>Common parameters, LOINC, UCUM, reference ranges, critical values</span>
           </div>
           <div class="capability-item">
-            <strong>✓ Panels & Batteries</strong>
-            <span>Panel structure, component validation, hasMember checks</span>
-          </div>
-          <div class="capability-item">
-            <strong>✓ Workflow</strong>
-            <span>Status progression, timing, issued dates, performers</span>
-          </div>
-          <div class="capability-item">
-            <strong>✓ Quality</strong>
-            <span>Specimen types, methods, devices, interpretations</span>
-          </div>
-          <div class="capability-item">
-            <strong>✓ Structure</strong>
-            <span>Bundle validation, resource relationships, references</span>
-          </div>
-          <div class="capability-item">
-            <strong>✓ Advanced</strong>
-            <span>Reflex tests, delta checks, fasting requirements</span>
+            <strong>✓ Workflow & structure</strong>
+            <span>Bundle, panels, hasMember, performers, resource relationships</span>
           </div>
         </div>
       </div>
@@ -290,7 +264,7 @@ FHIR Bundle: {&quot;resourceType&quot;: &quot;Bundle&quot;, &quot;entry&quot;: [
           <div class="success-message">
               <p class="placeholder">✓ No issues detected. All validations passed!</p>
               <div class="validation-summary">
-                <p><strong>Comprehensive validation completed:</strong> All 144+ laboratory parameters checked, core FHIR rules validated, reference ranges verified, UCUM units confirmed, critical values screened, workflow validated, structure integrity confirmed, and resource relationships verified.</p>
+                <p><strong>Validation completed:</strong> Observation and DiagnosticReport rules, laboratory checks, reference ranges, critical values, workflow, and structure verified.</p>
               </div>
           </div>
         </ng-template>

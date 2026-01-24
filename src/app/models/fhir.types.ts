@@ -245,6 +245,56 @@ export interface Bundle {
   signature?: any;
 }
 
+/** DiagnosticReport status (FHIR R4 and common extensions). */
+export type DiagnosticReportStatus =
+  | 'registered'
+  | 'partial'
+  | 'preliminary'
+  | 'modified'
+  | 'final'
+  | 'amended'
+  | 'corrected'
+  | 'appended'
+  | 'cancelled'
+  | 'entered-in-error'
+  | 'unknown';
+
+/** DiagnosticReport – findings and interpretation of diagnostic tests. See https://build.fhir.org/diagnosticreport.html */
+export interface DiagnosticReport {
+  resourceType: 'DiagnosticReport';
+  id?: string;
+  meta?: Meta;
+  implicitRules?: string;
+  language?: string;
+  text?: { status?: string; div?: string };
+  contained?: any[];
+  extension?: any[];
+  modifierExtension?: any[];
+  identifier?: Array<{ use?: string; type?: CodeableConcept; system?: string; value?: string }>;
+  basedOn?: Reference[];
+  status: DiagnosticReportStatus;
+  category?: CodeableConcept[];
+  code: CodeableConcept;
+  subject?: Reference;
+  encounter?: Reference;
+  effectiveDateTime?: string;
+  effectivePeriod?: Period;
+  issued?: string;
+  performer?: Reference[];
+  resultsInterpreter?: Reference[];
+  specimen?: Reference[];
+  result?: Reference[]; // Reference(Observation)
+  note?: Array<{ authorReference?: Reference; authorString?: string; time?: string; text: string }>;
+  imagingStudy?: Reference[];
+  /** R5+ study (ImagingStudy, etc.) */
+  study?: Reference[];
+  media?: Array<{ comment?: string; link: Reference }>;
+  composition?: Reference;
+  conclusion?: string;
+  conclusionCode?: CodeableConcept[];
+  presentedForm?: Array<{ contentType?: string; url?: string; data?: string; title?: string }>;
+}
+
 export interface LaboratoryParameter {
   name: string;
   loincCode: string;
