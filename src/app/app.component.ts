@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observation, DiagnosticReport } from './models/fhir.types';
-import { validateFhirObservations, type CheckResult, type CheckIssue } from './checks/fhir-observation-checks';
+import { validateFhirObservations, type CheckResult, type CheckIssue, type CheckStatus } from './checks/fhir-observation-checks';
 
 @Component({
   standalone: true,
@@ -844,6 +844,18 @@ export class AppComponent {
    */
   getWarnCount(): number {
     return this.issues.filter(i => i.severity === 'warn').length;
+  }
+
+  /**
+   * Get issues sorted by severity (errors first, then warnings, then ok)
+   */
+  get sortedIssues(): CheckIssue[] {
+    const severityOrder: Record<CheckStatus, number> = { error: 0, warn: 1, ok: 2 };
+    return [...this.issues].sort((a, b) => {
+      const orderA = severityOrder[a.severity] ?? 99;
+      const orderB = severityOrder[b.severity] ?? 99;
+      return orderA - orderB;
+    });
   }
 
   /**

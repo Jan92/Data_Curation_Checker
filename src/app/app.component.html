@@ -249,7 +249,7 @@ Or: Bundle / JSON array / NDJSON"
         <div class="issue-list" *ngIf="issues.length; else noIssues" role="list">
           <div 
             class="issue" 
-            *ngFor="let issue of issues; trackBy: trackByIssue"
+            *ngFor="let issue of sortedIssues; trackBy: trackByIssue"
             role="listitem"
             [attr.aria-label]="issue.severity + ': ' + issue.label"
           >
