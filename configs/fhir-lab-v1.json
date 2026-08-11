@@ -1,0 +1,25 @@
+{
+  "id": "fhir-lab-v1",
+  "version": "1.0.0",
+  "name": "FHIR Laboratory Observation & DiagnosticReport",
+  "description": "Syntactic and structural validation for FHIR R4 Observation and DiagnosticReport resources in laboratory medicine (SEARCH DCC demonstrator).",
+  "formats": ["json", "ndjson", "fhir-bundle", "fhir-array", "fhir-resource"],
+  "entities": [
+    {
+      "name": "Observation",
+      "description": "FHIR R4 Observation (laboratory)",
+      "requiredFields": ["resourceType", "status", "code"],
+      "optionalFields": ["subject", "effectiveDateTime", "issued", "performer", "valueQuantity", "referenceRange", "specimen", "category"]
+    },
+    {
+      "name": "DiagnosticReport",
+      "description": "FHIR DiagnosticReport",
+      "requiredFields": ["resourceType", "status", "code"],
+      "optionalFields": ["category", "subject", "effectiveDateTime", "issued", "performer", "result", "specimen"]
+    }
+  ],
+  "metadataRequirements": ["datasetId", "sourceSite", "schemaVersion", "toolVersion", "license", "provenance"],
+  "plugins": ["fhir-observation", "fhir-diagnostic-report", "laboratory-loinc"],
+  "failOnError": true,
+  "failOnWarn": false
+}

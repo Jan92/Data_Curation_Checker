@@ -1,6 +1,20 @@
 # Data Curation Checker
 
-A tool for validating FHIR R4 **Observation** and **DiagnosticReport** resources. It checks structure, terminology, references, and laboratory-specific rules. You can run it in the browser or use the validation logic **without the UI** (e.g. from Node, scripts, or CI).
+**SEARCH Data Curation Checker (DCC)** — developed by [medicalvalues](https://www.medicalvalues.de) for the [SEARCH](https://www.ihi.europa.eu/) IHI JU platform (deliverable D1.6 §4.2.3).
+
+On-premise **quality gate** for curated and annotated research datasets (CAD). The module verifies whether datasets comply with predefined **syntactic** standards, schemas and formatting rules **before** they are made available via the Platform Data Uploader. It does **not** perform clinical interpretation or semantic plausibility assessment.
+
+---
+
+## Role in SEARCH (meta-scenario 1.1)
+
+1. Data curation (HYGEIA / T3.1 procedures)  
+2. Data annotation  
+3. **Data Curation Checker (this module)** → PASS / FAIL  
+4. On PASS → Platform Data Uploader (metadata + local CAD storage)  
+5. On FAIL → notify data provider with discrepancies  
+
+The checker runs **locally** (on-premise). Validation outcomes can be recorded in metadata for downstream modules (e.g. Data Harmonization).
 
 ---
 
@@ -8,105 +22,96 @@ A tool for validating FHIR R4 **Observation** and **DiagnosticReport** resources
 
 - **Development:** `npm start` — serves at `http://localhost:4200/`
 - **Production build:** `npm run build` — output in `dist/`
-- **GitHub Pages:** The app is deployed via GitHub Actions to **https://jan92.github.io/Data_Curation_Checker/** when you push to `main` or `master`.
+- **GitHub Pages:** deployed via GitHub Actions to **https://jan92.github.io/Data_Curation_Checker/**
+
+The UI captures **dataset/run context** (dataset ID, source/site, timeframe, mode), shows the **active config version + hash**, presents a **PASS/FAIL quality gate**, and exports **JSON** or **Markdown** reports.
 
 ---
 
 ## Supported input formats
 
-- FHIR JSON **Bundle** (e.g. `type: "collection"` with `entry[]`) containing Observation and/or DiagnosticReport
-- JSON **array** of Observation and/or DiagnosticReport resources
-- **NDJSON** (one JSON resource per line)
-- Single **Observation** or **DiagnosticReport** (JSON object)
+- FHIR JSON **Bundle** with Observation and/or DiagnosticReport  
+- JSON **array** of resources  
+- **NDJSON** (one resource per line)  
+- Single **Observation** or **DiagnosticReport**
 
 ---
 
 ## What is validated
 
-- **Observation:** Structure, required fields (`status`, `code`), `value[x]` vs `dataAbsentReason`, organizer rules; CodeableConcepts, references, dates, URLs.
-- **DiagnosticReport:** Required `status`, `code`; recommended `category`, `subject`, `effective`/`issued`, `performer`, `result` (Observation references); reference and CodeableConcept checks. See [FHIR DiagnosticReport](https://build.fhir.org/diagnosticreport.html).
-- **Laboratory (Observation, LOINC-coded):** Parameter-specific rules for many common lab parameters (e.g. glucose, creatinine, HbA1c, CBC, liver, cardiac, thyroid, coagulation, tumor markers, urine, hormones, vitamins):
-  - UCUM units and reference ranges, critical low/high
-  - Specimen, method, timing, interpretation; panel/component, reflex, delta checks; status workflow, performer, device, dataAbsentReason
-- **Structure:** Bundle format, resource relationships, reference integrity.
+- **Observation:** Structure, required fields (`status`, `code`), `value[x]` vs `dataAbsentReason`, CodeableConcepts, references, dates, URLs  
+- **DiagnosticReport:** Required `status`, `code`; recommended `category`, `subject`, `effective`/`issued`, `performer`, `result`  
+- **Laboratory (LOINC):** UCUM units, reference ranges, critical values, workflow structure  
+- **Config-driven gate:** Versioned validation config (`configs/fhir-lab-v1.json` / `.yaml`) with hash snapshot per run  
+
+See [FHIR DiagnosticReport](https://build.fhir.org/diagnosticreport.html).
 
 ---
 
-## Using the checks without the UI
+## Using checks without the UI
 
-The validation logic lives in a plain TypeScript module with **no Angular dependency**. You can:
+### Programmatic API
 
-- **Import and call it** from any Node or TypeScript project.
-- **Run the CLI** to validate files or stdin and get a JSON report.
+```ts
+import { runDataCurationCheck, formatReportAsMarkdown } from './src/app/checks/fhir-observation-checks';
 
-### Programmatic usage
+const report = runDataCurationCheck(content, {
+  source: 'File',
+  sourceDetail: 'path.json',
+  runContext: {
+    datasetId: 'CAD-001',
+    sourceSite: 'HYGEIA',
+    mode: 'local',
+    inputFiles: ['path.json']
+  }
+});
 
-Import and call:
+console.log(report.gate); // 'PASS' | 'FAIL'
+console.log(formatReportAsMarkdown(report));
+```
+
+Legacy helper (issues + checkResults only):
 
 ```ts
 import { validateFhirObservations } from './src/app/checks/fhir-observation-checks';
-
-const report = validateFhirObservations(content, {
-  source: 'File',           // optional: 'File' | 'Text' | 'stdin' | 'Input'
-  sourceDetail: 'path.json' // optional: file path or other detail
-});
 ```
 
-**Signature:**
-
-```ts
-validateFhirObservations(
-  content: string,
-  options?: { source?: string; sourceDetail?: string }
-): ValidationReport
-```
-
-**`ValidationReport`:**
-
-```ts
-{
-  parseResult: {
-    ok: boolean;
-    type: string;              // e.g. 'JSON Object', 'NDJSON', 'JSON Array'
-    resources: Observation[];
-    diagnosticReports: DiagnosticReport[];
-    error?: string;            // set when ok is false
-  };
-  issues: CheckIssue[];        // { severity, label, detail, location }
-  checkResults: CheckResult[]; // { label, status, statusLabel, detail }
-}
-```
-
-Types are exported from `./src/app/checks/fhir-observation-checks` and `./src/app/checks/types`.
-
-### CLI (headless)
-
-The CLI reads from a file or stdin and prints a `ValidationReport` as JSON.
-
-**From a file:**
+### CLI
 
 ```bash
+# Validate config (JSON or YAML)
+npm run check:config -- --config ./configs/fhir-lab-v1.json
+npm run check:config -- --config ./configs/fhir-lab-v1.yaml
+
+# Run DCC on a dataset
 npm run check:cli -- --file ./observations.json
+npm run check:cli -- --file ./observations.json --config ./configs/fhir-lab-v1.json \
+  --dataset-id CAD-001 --source-site HYGEIA --mode local --format md --out report.md
+
+# Exit code 2 when gate is FAIL
+npm run check:cli -- --file ./data.json --gate-exit
 ```
 
-**From stdin:**
+**`DccRunReport`** includes: `gate`, `toolVersion`, `config` (id, version, hash, snapshot), `runContext`, `summary`, `issues`, `checkResults`, `recordResults`.
 
-```bash
-cat observations.json | npm run check:cli
-```
-
-**Requirements:** `ts-node` is used as a dev dependency. Run `npm install` first.
+Reports: **JSON**, **Markdown**, **HTML** (`--format html`; open/print to PDF from the browser).
 
 ---
 
 ## Project layout
 
-- `src/app/checks/` — Validation logic (framework-agnostic):
-  - `fhir-observation-checks.ts` — `FhirObservationChecker`, `validateFhirObservations`
-  - `types.ts` — `CheckStatus`, `CheckResult`, `CheckIssue`, `ParseResult`, `ValidationReport`, `ValidateOptions`
-- `src/app/models/fhir.types.ts` — FHIR R4 type definitions used by the checks
-- `scripts/run-checks-cli.ts` — CLI entry point
-- `tsconfig.cli.json` — tsconfig for the CLI (Node, CommonJS)
+- `configs/` — versioned validation schemas (JSON + YAML)  
+- `src/app/checks/config/` — config types, default config, hash, config validator  
+- `src/app/checks/report/` — DCC run report + Markdown formatter  
+- `src/app/checks/fhir-observation-checks.ts` — FHIR validators + `runDataCurationCheck`  
+- `scripts/run-checks-cli.ts` — headless dataset validation  
+- `scripts/validate-config-cli.ts` — reject invalid validation configurations  
+
+---
+
+## Privacy
+
+Syntactic/structural validation only. Designed for local processing, data minimisation, and auditability (config hash, timestamps, tool version) without unnecessary exposure of personal data.
 
 ---
 

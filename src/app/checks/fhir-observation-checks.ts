@@ -1,12 +1,25 @@
 /**
  * FHIR Observation validation checks.
  * Pure TypeScript – no Angular. Use from UI, Node, or CLI.
+ * SEARCH Data Curation Checker (DCC) module — medicalvalues (D1.6 §4.2.3).
  */
 
 import { Observation, Bundle, DiagnosticReport } from '../models/fhir.types';
 import type { CheckResult, CheckIssue, CheckStatus, ParseResult, ValidationReport, ValidateOptions } from './types';
+import { resolveEffectiveConfig, defaultRunContext } from './config';
+import { buildDccRunReport, type DccRunReport } from './report/build-report';
 
 export type { CheckResult, CheckIssue, CheckStatus, ParseResult, ValidationReport, ValidateOptions };
+export type { DccRunReport };
+export { formatReportAsMarkdown, formatReportAsHtml, TOOL_VERSION } from './report/build-report';
+export {
+  DEFAULT_FHIR_LAB_CONFIG,
+  resolveEffectiveConfig,
+  defaultRunContext,
+  validateValidationConfig,
+  hashConfig
+} from './config';
+export type { DatasetRunContext, ValidationConfig, GateStatus, ValidationMode, EffectiveConfigRef, RecordValidationResult } from './config';
 
 export class FhirObservationChecker {
   validate(content: string, options?: ValidateOptions): ValidationReport {
@@ -21,7 +34,14 @@ export class FhirObservationChecker {
 
     const { issues, observationCount, laboratoryCount, diagnosticReportCount } = this.performValidation(parseResult, content, source);
     const checkResults = this.generateValidationResults(issues, observationCount, laboratoryCount, diagnosticReportCount, parseResult, source, sourceDetail);
-    return { parseResult, issues, checkResults };
+    return {
+      parseResult,
+      issues,
+      checkResults,
+      observationCount,
+      laboratoryCount,
+      diagnosticReportCount
+    };
   }
 
   private buildParseErrorResult(parseResult: ParseResult, source: string, sourceDetail?: string): { issues: CheckIssue[]; checkResults: CheckResult[] } {
@@ -3064,4 +3084,31 @@ export class FhirObservationChecker {
 export function validateFhirObservations(content: string, options?: ValidateOptions): ValidationReport {
   const checker = new FhirObservationChecker();
   return checker.validate(content, options);
+}
+
+/**
+ * Full DCC run: FHIR checks + config versioning + gate + record-level results (D1.6 §4.2.3).
+ */
+export function runDataCurationCheck(content: string, options?: ValidateOptions): DccRunReport {
+  const checker = new FhirObservationChecker();
+  const base = checker.validate(content, options);
+  const config = resolveEffectiveConfig(options?.config);
+  const runContext = defaultRunContext({
+    ...options?.runContext,
+    inputFiles:
+      options?.runContext?.inputFiles?.length
+        ? options.runContext.inputFiles
+        : options?.sourceDetail
+          ? [options.sourceDetail]
+          : []
+  });
+
+  return buildDccRunReport({
+    parseResult: base.parseResult,
+    issues: base.issues,
+    checkResults: base.checkResults,
+    laboratoryCount: base.laboratoryCount ?? 0,
+    config,
+    runContext
+  });
 }

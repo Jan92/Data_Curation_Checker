@@ -2,7 +2,29 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observation, DiagnosticReport } from './models/fhir.types';
-import { validateFhirObservations, type CheckResult, type CheckIssue, type CheckStatus } from './checks/fhir-observation-checks';
+import {
+  runDataCurationCheck,
+  formatReportAsMarkdown,
+  formatReportAsHtml,
+  DEFAULT_FHIR_LAB_CONFIG,
+  resolveEffectiveConfig,
+  validateValidationConfig,
+  TOOL_VERSION,
+  type CheckResult,
+  type CheckIssue,
+  type CheckStatus,
+  type DccRunReport,
+  type GateStatus,
+  type ValidationMode,
+  type ValidationConfig,
+  type RecordValidationResult,
+  type EffectiveConfigRef
+} from './checks/fhir-observation-checks';
+
+type ResultTab = 'summary' | 'checks' | 'issues' | 'records';
+type IssueFilter = 'all' | 'error' | 'warn';
+
+const CONTEXT_STORAGE_KEY = 'dcc-run-context-v1';
 
 @Component({
   standalone: true,
@@ -12,13 +34,21 @@ import { validateFhirObservations, type CheckResult, type CheckIssue, type Check
   styleUrls: ['./app.component.css']
 })
 /**
- * Main application component for FHIR Observation validation
+ * SEARCH Data Curation Checker (DCC) — medicalvalues
+ * On-premise quality gate for curated/annotated datasets (D1.6 §4.2.3).
  */
 export class AppComponent {
   @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('configInput') configInput?: ElementRef<HTMLInputElement>;
 
-  // Component state
   readonly title = 'Data Curation Checker';
+  readonly toolVersion = TOOL_VERSION;
+
+  /** Active validation config (default or user-uploaded). */
+  activeConfig: ValidationConfig = DEFAULT_FHIR_LAB_CONFIG;
+  configSourceLabel = 'Built-in fhir-lab-v1';
+  configLoadError: string | null = null;
+
   inputText = '';
   selectedFile: File | null = null;
   selectedFileName = '';
@@ -28,6 +58,28 @@ export class AppComponent {
   lastParsedType = '';
   isLoading = false;
   validationError: string | null = null;
+
+  /** Dataset / run context (D1.6) */
+  datasetId = '';
+  sourceSite = '';
+  timeframe = '';
+  runMode: ValidationMode = 'interactive';
+  licenseField = '';
+  provenance = '';
+
+  gate: GateStatus | null = null;
+  lastRunReport: DccRunReport | null = null;
+
+  resultTab: ResultTab = 'summary';
+  issueFilter: IssueFilter = 'all';
+
+  constructor() {
+    this.restoreRunContext();
+  }
+
+  get effectiveConfig(): EffectiveConfigRef {
+    return resolveEffectiveConfig(this.activeConfig);
+  }
 
   /**
    * Checks if there is any input available (file or text)
@@ -100,7 +152,67 @@ export class AppComponent {
       this.checkResults = [];
       this.issues = [];
       this.lastParsedType = '';
+      this.gate = null;
+      this.lastRunReport = null;
+      this.resultTab = 'summary';
+      this.issueFilter = 'all';
     }
+  }
+
+  /**
+   * Load a custom YAML/JSON validation config (D1.6 config-driven gate).
+   */
+  async handleConfigSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.configLoadError = null;
+    try {
+      const text = await file.text();
+      const parsed = this.parseConfigText(text, file.name);
+      const report = validateValidationConfig(parsed);
+      if (!report.ok) {
+        throw new Error(report.issues.map((i) => `${i.path}: ${i.message}`).join('; '));
+      }
+      // Ensure hash resolves
+      resolveEffectiveConfig(parsed);
+      this.activeConfig = parsed;
+      this.configSourceLabel = file.name;
+      this.clearResults();
+    } catch (error) {
+      this.configLoadError =
+        error instanceof Error ? error.message : 'Could not load validation config.';
+      input.value = '';
+    }
+  }
+
+  resetConfig(): void {
+    this.activeConfig = DEFAULT_FHIR_LAB_CONFIG;
+    this.configSourceLabel = 'Built-in fhir-lab-v1';
+    this.configLoadError = null;
+    if (this.configInput?.nativeElement) {
+      this.configInput.nativeElement.value = '';
+    }
+    this.clearResults();
+  }
+
+  private parseConfigText(text: string, fileName: string): ValidationConfig {
+    const lower = fileName.toLowerCase();
+    if (lower.endsWith('.yaml') || lower.endsWith('.yml')) {
+      throw new Error(
+        'YAML configs are supported via CLI (npm run check:cli -- --config …). In the UI, upload the JSON config (e.g. configs/fhir-lab-v1.json).'
+      );
+    }
+    return JSON.parse(text) as ValidationConfig;
+  }
+
+  setResultTab(tab: ResultTab): void {
+    this.resultTab = tab;
+  }
+
+  setIssueFilter(filter: IssueFilter): void {
+    this.issueFilter = filter;
   }
 
   /**
@@ -761,7 +873,7 @@ export class AppComponent {
   }
 
   /**
-   * Runs the validation check on the input data
+   * Runs the DCC quality-gate check on the input data
    */
   async runCheck(): Promise<void> {
     if (!this.hasInput) {
@@ -773,6 +885,8 @@ export class AppComponent {
     this.validationError = null;
     this.checkResults = [];
     this.issues = [];
+    this.gate = null;
+    this.lastRunReport = null;
 
     try {
       const source = this.selectedFile ? 'File' : 'Text';
@@ -784,19 +898,87 @@ export class AppComponent {
         throw new Error('Input is empty.');
       }
 
-      const result = validateFhirObservations(content, {
+      const report = runDataCurationCheck(content, {
         source,
-        sourceDetail: this.selectedFileName || undefined
+        sourceDetail: this.selectedFileName || undefined,
+        config: this.activeConfig,
+        runContext: {
+          datasetId: this.datasetId.trim() || (this.selectedFileName || 'interactive-dataset'),
+          sourceSite: this.sourceSite.trim() || 'local',
+          timeframe: this.timeframe.trim() || undefined,
+          mode: this.runMode,
+          inputFiles: this.selectedFileName ? [this.selectedFileName] : [],
+          license: this.licenseField.trim() || undefined,
+          provenance: this.provenance.trim() || undefined,
+          schemaVersion: this.effectiveConfig.version
+        }
       });
 
-      this.lastParsedType = result.parseResult.type;
-      this.issues = result.issues;
-      this.checkResults = result.checkResults;
+      this.lastRunReport = report;
+      this.gate = report.gate;
+      this.lastParsedType = report.parseResult.type;
+      this.issues = report.issues;
+      this.checkResults = report.checkResults;
+      this.resultTab = 'summary';
+      this.issueFilter = 'all';
+      this.persistRunContext();
     } catch (error) {
       this.handleValidationError(error);
     } finally {
       this.isLoading = false;
     }
+  }
+
+  /**
+   * Download machine-readable JSON run report
+   */
+  downloadJsonReport(): void {
+    if (!this.lastRunReport) return;
+    this.downloadBlob(
+      JSON.stringify(this.lastRunReport, null, 2),
+      `dcc-report-${this.lastRunReport.runContext.datasetId || 'run'}.json`,
+      'application/json'
+    );
+  }
+
+  /**
+   * Download human-readable Markdown run report
+   */
+  downloadMarkdownReport(): void {
+    if (!this.lastRunReport) return;
+    this.downloadBlob(
+      formatReportAsMarkdown(this.lastRunReport),
+      `dcc-report-${this.lastRunReport.runContext.datasetId || 'run'}.md`,
+      'text/markdown'
+    );
+  }
+
+  /**
+   * Download printable HTML run report (D1.6 HTML; print to PDF from browser).
+   */
+  downloadHtmlReport(): void {
+    if (!this.lastRunReport) return;
+    this.downloadBlob(
+      formatReportAsHtml(this.lastRunReport),
+      `dcc-report-${this.lastRunReport.runContext.datasetId || 'run'}.html`,
+      'text/html'
+    );
+  }
+
+  /**
+   * Open HTML report in a new window for print / Save as PDF.
+   */
+  openPrintableReport(): void {
+    if (!this.lastRunReport) return;
+    const html = formatReportAsHtml(this.lastRunReport);
+    const win = window.open('', '_blank');
+    if (!win) {
+      this.validationError = 'Could not open print window. Allow pop-ups, or use Export HTML report.';
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
   }
 
   /**
@@ -806,6 +988,9 @@ export class AppComponent {
     const errorMessage =
       error instanceof Error ? error.message : 'An unexpected error occurred during validation.';
     this.validationError = errorMessage;
+    this.gate = 'FAIL';
+    this.lastRunReport = null;
+    this.resultTab = 'issues';
     this.issues = [
       {
         severity: 'error',
@@ -824,6 +1009,56 @@ export class AppComponent {
     ];
   }
 
+  private downloadBlob(content: string, filename: string, type: string): void {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private persistRunContext(): void {
+    try {
+      localStorage.setItem(
+        CONTEXT_STORAGE_KEY,
+        JSON.stringify({
+          datasetId: this.datasetId,
+          sourceSite: this.sourceSite,
+          timeframe: this.timeframe,
+          runMode: this.runMode,
+          licenseField: this.licenseField,
+          provenance: this.provenance
+        })
+      );
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }
+
+  private restoreRunContext(): void {
+    try {
+      const raw = localStorage.getItem(CONTEXT_STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw) as Partial<{
+        datasetId: string;
+        sourceSite: string;
+        timeframe: string;
+        runMode: ValidationMode;
+        licenseField: string;
+        provenance: string;
+      }>;
+      this.datasetId = data.datasetId ?? '';
+      this.sourceSite = data.sourceSite ?? '';
+      this.timeframe = data.timeframe ?? '';
+      this.runMode = data.runMode ?? 'interactive';
+      this.licenseField = data.licenseField ?? '';
+      this.provenance = data.provenance ?? '';
+    } catch {
+      /* ignore corrupt storage */
+    }
+  }
 
   /**
    * TrackBy function for issue list rendering
@@ -832,18 +1067,22 @@ export class AppComponent {
     return `${issue.severity}-${issue.label}-${issue.location}-${index}`;
   }
 
+  trackByRecord(index: number, record: RecordValidationResult): string {
+    return `${record.recordId}-${index}`;
+  }
+
   /**
    * Get error count
    */
   getErrorCount(): number {
-    return this.issues.filter(i => i.severity === 'error').length;
+    return this.issues.filter((i) => i.severity === 'error').length;
   }
 
   /**
    * Get warning count
    */
   getWarnCount(): number {
-    return this.issues.filter(i => i.severity === 'warn').length;
+    return this.issues.filter((i) => i.severity === 'warn').length;
   }
 
   /**
@@ -856,6 +1095,15 @@ export class AppComponent {
       const orderB = severityOrder[b.severity] ?? 99;
       return orderA - orderB;
     });
+  }
+
+  get filteredIssues(): CheckIssue[] {
+    if (this.issueFilter === 'all') return this.sortedIssues;
+    return this.sortedIssues.filter((i) => i.severity === this.issueFilter);
+  }
+
+  get recordResults(): RecordValidationResult[] {
+    return this.lastRunReport?.recordResults ?? [];
   }
 
   /**

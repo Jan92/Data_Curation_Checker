@@ -1,19 +1,22 @@
 <div class="page">
   <header class="app-header">
     <div>
-      <p class="eyebrow">Data Curation Checker</p>
       <h1>Data Curation Checker</h1>
-      <p class="subtitle">Validation of FHIR Observation and DiagnosticReport resources with laboratory medicine checks, critical value detection, workflow and structural rules. Supports JSON Bundles, arrays, NDJSON, and single resources.</p>
+      <p class="subtitle">
+        On-premise quality gate for curated and annotated research datasets.
+        Validates FHIR Observation and DiagnosticReport resources against a versioned
+        syntactic configuration before platform upload.
+      </p>
     </div>
-    <button 
-      class="primary" 
-      type="button" 
-      (click)="runCheck()" 
+    <button
+      class="primary"
+      type="button"
+      (click)="runCheck()"
       [disabled]="!hasInput || isProcessing"
       [attr.aria-busy]="isProcessing"
-      aria-label="Run validation check on FHIR data"
+      aria-label="Run Data Curation Checker quality gate"
     >
-      <span *ngIf="!isProcessing">Run check</span>
+      <span *ngIf="!isProcessing">Run quality gate</span>
       <span *ngIf="isProcessing" class="loading-text">
         <span class="spinner" aria-hidden="true"></span>
         Validating...
@@ -21,89 +24,113 @@
     </button>
   </header>
 
+  <nav class="workflow-strip" aria-label="Dataset upload workflow">
+    <span class="workflow-step">1. Curation</span>
+    <span class="workflow-arrow" aria-hidden="true">→</span>
+    <span class="workflow-step">2. Annotation</span>
+    <span class="workflow-arrow" aria-hidden="true">→</span>
+    <span class="workflow-step active">3. DCC quality gate</span>
+    <span class="workflow-arrow" aria-hidden="true">→</span>
+    <span class="workflow-step">4. Platform uploader</span>
+  </nav>
+
   <main class="grid">
     <section class="panel">
+      <h2>Dataset &amp; run context</h2>
+      <p class="panel-lead">
+        Metadata persisted with each validation run for auditability (dataset ID, source/site, mode, config version).
+      </p>
+
+      <div class="context-grid">
+        <label class="field">
+          <span>Dataset ID</span>
+          <input type="text" [(ngModel)]="datasetId" [disabled]="isProcessing" placeholder="e.g. CAD-001" />
+        </label>
+        <label class="field">
+          <span>Source / site</span>
+          <input type="text" [(ngModel)]="sourceSite" [disabled]="isProcessing" placeholder="e.g. local-lab / site-01" />
+        </label>
+        <label class="field">
+          <span>Timeframe</span>
+          <input type="text" [(ngModel)]="timeframe" [disabled]="isProcessing" placeholder="e.g. 2024-01 … 2024-12" />
+        </label>
+        <label class="field">
+          <span>Mode</span>
+          <select [(ngModel)]="runMode" [disabled]="isProcessing">
+            <option value="interactive">interactive</option>
+            <option value="local">local (on-premise)</option>
+            <option value="batch">batch</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>License</span>
+          <input type="text" [(ngModel)]="licenseField" [disabled]="isProcessing" placeholder="optional" />
+        </label>
+        <label class="field">
+          <span>Provenance</span>
+          <input type="text" [(ngModel)]="provenance" [disabled]="isProcessing" placeholder="optional" />
+        </label>
+      </div>
+
+      <div class="config-card">
+        <h3>Active validation config</h3>
+        <dl class="config-meta">
+          <div><dt>ID</dt><dd>{{ effectiveConfig.id }}</dd></div>
+          <div><dt>Version</dt><dd>{{ effectiveConfig.version }}</dd></div>
+          <div><dt>Hash</dt><dd class="mono">{{ effectiveConfig.hash }}</dd></div>
+          <div><dt>Tool</dt><dd>v{{ toolVersion }}</dd></div>
+        </dl>
+        <p class="config-name">{{ effectiveConfig.snapshot.name }} · {{ configSourceLabel }}</p>
+        <div class="config-actions">
+          <label class="config-upload">
+            <span>Load config (JSON)</span>
+            <input
+              #configInput
+              type="file"
+              accept=".json,application/json"
+              (change)="handleConfigSelected($event)"
+              [disabled]="isProcessing"
+              aria-label="Upload validation configuration JSON"
+            />
+          </label>
+          <button
+            class="link"
+            type="button"
+            (click)="resetConfig()"
+            [disabled]="isProcessing || configSourceLabel === 'Built-in fhir-lab-v1'"
+          >
+            Reset to built-in
+          </button>
+        </div>
+        <p class="config-error" *ngIf="configLoadError" role="alert">{{ configLoadError }}</p>
+      </div>
+
       <h2>Data source</h2>
 
       <div class="info-box">
-        <h3>Supported file formats</h3>
+        <h3>Supported input formats</h3>
         <ul class="format-list">
           <li><strong>JSON Bundle:</strong> FHIR Bundle with Observation and/or DiagnosticReport in <code>entry[].resource</code></li>
           <li><strong>JSON Array:</strong> Array of Observation and/or DiagnosticReport resources</li>
-          <li><strong>Single JSON:</strong> Single Observation <code ngNonBindable>&#123;resourceType: "Observation", ...&#125;</code> or DiagnosticReport <code ngNonBindable>&#123;resourceType: "DiagnosticReport", ...&#125;</code></li>
-          <li><strong>NDJSON:</strong> Newline-delimited JSON (one resource per line)</li>
+          <li><strong>Single JSON:</strong> Single Observation or DiagnosticReport</li>
+          <li><strong>NDJSON:</strong> One resource per line</li>
           <li><strong>File extensions:</strong> .json, .ndjson, .txt (max 10MB)</li>
         </ul>
-        <details class="example-details">
-          <summary>Example formats</summary>
-          <div class="example-content">
-            <div class="example-block">
-              <strong>Single Observation:</strong>
-              <pre><code ngNonBindable>&#123;
-  "resourceType": "Observation",
-  "status": "final",
-  "code": &#123;
-    "coding": [&#123;
-      "system": "http://loinc.org",
-      "code": "2339-0",
-      "display": "Glucose [Mass/volume] in Blood"
-    &#125;]
-  },
-  "valueQuantity": &#123;
-    "value": 95,
-    "unit": "mg/dL",
-    "system": "http://unitsofmeasure.org"
-  }
-&#125;</code></pre>
-            </div>
-            <div class="example-block">
-              <strong>JSON Array:</strong>
-              <pre><code ngNonBindable>[&#123;
-  "resourceType": "Observation",
-  ...
-},
-&#123;
-  "resourceType": "Observation",
-  ...
-&#125;]</code></pre>
-            </div>
-            <div class="example-block">
-              <strong>FHIR Bundle:</strong>
-              <pre><code ngNonBindable>&#123;
-  "resourceType": "Bundle",
-  "type": "collection",
-  "entry": [&#123;
-    "resource": &#123;
-      "resourceType": "Observation",
-      ...
-    }
-  &#125;, &#123;
-    "resource": &#123;
-      "resourceType": "DiagnosticReport",
-      "status": "final",
-      "code": &#123; "coding": [&#123; "system": "http://loinc.org", "code": "58410-2" &#125;] &#125;,
-      "result": [&#123; "reference": "Observation/obs-1" &#125;]
-    }
-  &#125;]
-&#125;</code></pre>
-            </div>
-          </div>
-        </details>
       </div>
 
       <div class="panel-block">
         <label class="field">
-          <span>Upload file</span>
-          <input 
-            #fileInput 
-            type="file" 
-            accept=".json,.ndjson,.txt,application/json,text/plain" 
+          <span>Upload CAD file</span>
+          <input
+            #fileInput
+            type="file"
+            accept=".json,.ndjson,.txt,application/json,text/plain"
             (change)="handleFileSelected($event)"
             [disabled]="isProcessing"
             aria-describedby="file-hint"
-            aria-label="Upload FHIR Observation or DiagnosticReport file"
+            aria-label="Upload curated annotated dataset file"
           />
-          <small id="file-hint" class="field-hint">Select a JSON, NDJSON, or text file with FHIR Observation and/or DiagnosticReport resources (max 10MB)</small>
+          <small id="file-hint" class="field-hint">Curated &amp; annotated dataset (CAD) for DCC validation — local processing only</small>
         </label>
         <button
           class="link"
@@ -132,156 +159,297 @@
           [(ngModel)]="inputText"
           [disabled]="isProcessing"
           (input)="clearResults()"
-          placeholder="Example: {&quot;resourceType&quot;: &quot;Observation&quot;, &quot;status&quot;: &quot;final&quot;, ...}
-Or: {&quot;resourceType&quot;: &quot;DiagnosticReport&quot;, &quot;status&quot;: &quot;final&quot;, &quot;code&quot;: {...}, &quot;result&quot;: [...]}
-Or: Bundle / JSON array / NDJSON"
+          placeholder="Paste FHIR Bundle, array, single resource, or NDJSON…"
           aria-describedby="textarea-hint"
           aria-label="Paste FHIR Observation or DiagnosticReport data"
         ></textarea>
-        <small id="textarea-hint" class="field-hint">Paste JSON. Supports Observation, DiagnosticReport, Bundle, array, or NDJSON.</small>
+        <small id="textarea-hint" class="field-hint">Supports Observation, DiagnosticReport, Bundle, array, or NDJSON.</small>
       </label>
 
       <div class="demo-section">
-        <button 
-          class="demo-button" 
-          type="button" 
+        <button
+          class="demo-button"
+          type="button"
           (click)="loadExampleData()"
           [disabled]="isProcessing"
           aria-label="Load example FHIR data for demonstration"
         >
-          <span aria-hidden="true">📋</span>
           Load example data
         </button>
         <p class="demo-hint">
-          <strong>Try it out!</strong> <strong>Load example data</strong>: randomly picks one of 3 small examples (all valid, or missing status / dataAbsentReason+value, etc.) → each run can show different errors and warnings. <strong>Download Sample file</strong>: comprehensive set with many deliberate issues → upload and run to see lots of findings.
+          <strong>Try it out!</strong> Randomly loads one of 3 small examples.
+          Use <strong>Download Sample file</strong> for a comprehensive set with deliberate issues.
         </p>
       </div>
 
       <div class="info-box">
-        <h3>What gets validated?</h3>
+        <h3>What the DCC checks</h3>
         <div class="validation-list">
           <div class="validation-item">
-            <strong>Observation:</strong> Required fields (status, code), value vs dataAbsentReason, structure, CodeableConcepts, references, dates, URLs
+            <strong>Syntactic / structural only:</strong> Required fields, formats, references — no clinical interpretation
           </div>
           <div class="validation-item">
-            <strong>DiagnosticReport:</strong> Status, code, category, subject, effective/issued, performer, result (Observation references), specimen, references
+            <strong>Observation &amp; DiagnosticReport:</strong> status, code, category, subject, effective/issued, performer, result
           </div>
           <div class="validation-item">
-            <strong>Laboratory (Observation):</strong> Common parameters (LOINC), UCUM units, reference ranges, critical value detection, specimen and method
+            <strong>Laboratory:</strong> LOINC, UCUM, reference ranges, critical values, workflow structure
           </div>
           <div class="validation-item">
-            <strong>Workflow & Structure:</strong> Bundle validation, panel/hasMember, timing, performers, resource relationships
+            <strong>Gate outcome:</strong> PASS → ready for Platform Uploader · FAIL → notify data provider with discrepancies
           </div>
         </div>
       </div>
+
+      <p class="privacy-note">
+        Privacy: local / on-premise processing, data minimisation, outputs limited to technical findings.
+      </p>
     </section>
 
     <section class="panel">
-      <h2>FHIR check</h2>
+      <h2>Quality gate result</h2>
 
-      <div 
-        class="status" 
+      <div
+        class="status"
         [class.ready]="hasInput"
         [class.processing]="isProcessing"
         role="status"
         [attr.aria-live]="isProcessing ? 'polite' : 'off'"
       >
         <span class="status-dot" [attr.aria-hidden]="true"></span>
-        <span *ngIf="isProcessing">Validating data...</span>
-        <span *ngIf="!isProcessing">{{ hasInput ? 'Ready to run check' : 'Please add a file or text.' }}</span>
+        <span *ngIf="isProcessing">Validating dataset…</span>
+        <span *ngIf="!isProcessing">{{ hasInput ? 'Ready to run quality gate' : 'Add a file or paste FHIR data.' }}</span>
       </div>
 
       <div *ngIf="validationError" class="error-banner" role="alert">
         <strong>Error:</strong> {{ validationError }}
       </div>
 
+      <div
+        *ngIf="gate"
+        class="gate-banner"
+        [class.gate-pass]="gate === 'PASS'"
+        [class.gate-fail]="gate === 'FAIL'"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="gate-label">Quality gate</span>
+        <strong class="gate-value">{{ gate }}</strong>
+        <p *ngIf="gate === 'PASS'">Dataset may proceed to the Platform Data Uploader.</p>
+        <p *ngIf="gate === 'FAIL'">Dataset rejected — notify the data provider with the issues below.</p>
+      </div>
+
+      <div class="export-row" *ngIf="lastRunReport">
+        <button class="secondary" type="button" (click)="downloadJsonReport()">Export JSON</button>
+        <button class="secondary" type="button" (click)="downloadMarkdownReport()">Export Markdown</button>
+        <button class="secondary" type="button" (click)="downloadHtmlReport()">Export HTML</button>
+        <button class="secondary" type="button" (click)="openPrintableReport()">Print / PDF</button>
+      </div>
+
       <div class="info-box" *ngIf="!checkResults.length">
         <h3>Validation capabilities</h3>
         <div class="capability-grid">
           <div class="capability-item">
-            <strong>✓ Observation</strong>
-            <span>Status, code, value/dataAbsentReason, concepts, references, dates</span>
+            <strong>Versioned config</strong>
+            <span>YAML/JSON schemas with hash &amp; snapshot per run</span>
           </div>
           <div class="capability-item">
-            <strong>✓ DiagnosticReport</strong>
-            <span>Status, code, category, subject, effective/issued, performer, result</span>
+            <strong>Observation</strong>
+            <span>Status, code, value/dataAbsentReason, concepts, references</span>
           </div>
           <div class="capability-item">
-            <strong>✓ Laboratory</strong>
-            <span>Common parameters, LOINC, UCUM, reference ranges, critical values</span>
+            <strong>DiagnosticReport</strong>
+            <span>Status, code, category, subject, effective/issued, result</span>
           </div>
           <div class="capability-item">
-            <strong>✓ Workflow & structure</strong>
-            <span>Bundle, panels, hasMember, performers, resource relationships</span>
+            <strong>Reports</strong>
+            <span>JSON, Markdown, HTML (print to PDF)</span>
           </div>
         </div>
+        <p class="placeholder empty-hint">No check run yet. Click “Run quality gate”.</p>
       </div>
 
-      <div class="results" *ngIf="checkResults.length; else noResults">
-        <div class="result" *ngFor="let result of checkResults">
-          <div class="result-title">
-            <span
-              class="badge"
-              [class.ok]="result.status === 'ok'"
-              [class.warn]="result.status === 'warn'"
-              [class.error]="result.status === 'error'"
-            >
-              {{ result.statusLabel }}
-            </span>
-            <span>{{ result.label }}</span>
-          </div>
-          <p>{{ result.detail }}</p>
-        </div>
-      </div>
-
-      <div class="issues" *ngIf="checkResults.length" role="region" aria-labelledby="issues-heading">
-        <div class="issues-header">
-          <h3 id="issues-heading">Issues</h3>
-          <div class="issue-stats" *ngIf="issues.length" role="status" aria-live="polite">
-            <span class="stat-item error-stat" [attr.aria-label]="'Error count: ' + getErrorCount()">
-              {{ getErrorCount() }} errors
-            </span>
-            <span class="stat-item warn-stat" [attr.aria-label]="'Warning count: ' + getWarnCount()">
-              {{ getWarnCount() }} warnings
-            </span>
-          </div>
-        </div>
-        <div class="issue-list" *ngIf="issues.length; else noIssues" role="list">
-          <div 
-            class="issue" 
-            *ngFor="let issue of sortedIssues; trackBy: trackByIssue"
-            role="listitem"
-            [attr.aria-label]="issue.severity + ': ' + issue.label"
+      <ng-container *ngIf="checkResults.length">
+        <div class="result-tabs" role="tablist" aria-label="Result views">
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            [class.active]="resultTab === 'summary'"
+            [attr.aria-selected]="resultTab === 'summary'"
+            (click)="setResultTab('summary')"
           >
-            <span
-              class="badge"
-              [class.ok]="issue.severity === 'ok'"
-              [class.warn]="issue.severity === 'warn'"
-              [class.error]="issue.severity === 'error'"
-              [attr.aria-label]="'Severity: ' + issue.severity"
-            >
-              {{ issue.severity.toUpperCase() }}
-            </span>
+            Summary
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            [class.active]="resultTab === 'checks'"
+            [attr.aria-selected]="resultTab === 'checks'"
+            (click)="setResultTab('checks')"
+          >
+            Checks
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            [class.active]="resultTab === 'issues'"
+            [attr.aria-selected]="resultTab === 'issues'"
+            (click)="setResultTab('issues')"
+          >
+            Issues
+            <span class="tab-count" *ngIf="issues.length">{{ issues.length }}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            [class.active]="resultTab === 'records'"
+            [attr.aria-selected]="resultTab === 'records'"
+            (click)="setResultTab('records')"
+          >
+            Records
+            <span class="tab-count" *ngIf="recordResults.length">{{ recordResults.length }}</span>
+          </button>
+        </div>
+
+        <div class="tab-panel" *ngIf="resultTab === 'summary'" role="tabpanel">
+          <div class="metrics-grid" *ngIf="lastRunReport; else summaryFallback">
+            <div class="metric">
+              <strong>{{ lastRunReport.summary.observationCount }}</strong>
+              <span>Observations</span>
+            </div>
+            <div class="metric">
+              <strong>{{ lastRunReport.summary.diagnosticReportCount }}</strong>
+              <span>DiagnosticReports</span>
+            </div>
+            <div class="metric">
+              <strong>{{ lastRunReport.summary.laboratoryCount }}</strong>
+              <span>Laboratory</span>
+            </div>
+            <div class="metric metric-error">
+              <strong>{{ lastRunReport.summary.errorCount }}</strong>
+              <span>Errors</span>
+            </div>
+            <div class="metric metric-warn">
+              <strong>{{ lastRunReport.summary.warnCount }}</strong>
+              <span>Warnings</span>
+            </div>
+            <div class="metric">
+              <strong class="mono small">{{ lastParsedType || '—' }}</strong>
+              <span>Parsed as</span>
+            </div>
+          </div>
+          <ng-template #summaryFallback>
+            <p class="placeholder">Summary available after a successful report build.</p>
+          </ng-template>
+          <dl class="summary-meta" *ngIf="lastRunReport">
             <div>
-              <strong>{{ issue.label }}</strong>
-              <p>{{ issue.detail }}</p>
-              <span class="issue-location" [attr.aria-label]="'Location: ' + issue.location">{{ issue.location }}</span>
+              <dt>Dataset</dt>
+              <dd class="mono">{{ lastRunReport.runContext.datasetId }}</dd>
+            </div>
+            <div>
+              <dt>Config hash</dt>
+              <dd class="mono">{{ lastRunReport.config.hash }}</dd>
+            </div>
+            <div>
+              <dt>Timestamp</dt>
+              <dd class="mono">{{ lastRunReport.summary.timestamp }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="tab-panel" *ngIf="resultTab === 'checks'" role="tabpanel">
+          <div class="results">
+            <div class="result" *ngFor="let result of checkResults">
+              <div class="result-title">
+                <span
+                  class="badge"
+                  [class.ok]="result.status === 'ok'"
+                  [class.warn]="result.status === 'warn'"
+                  [class.error]="result.status === 'error'"
+                >
+                  {{ result.statusLabel }}
+                </span>
+                <span>{{ result.label }}</span>
+              </div>
+              <p>{{ result.detail }}</p>
             </div>
           </div>
         </div>
-        <ng-template #noIssues>
-          <div class="success-message">
-              <p class="placeholder">✓ No issues detected. All validations passed!</p>
-              <div class="validation-summary">
-                <p><strong>Validation completed:</strong> Observation and DiagnosticReport rules, laboratory checks, reference ranges, critical values, workflow, and structure verified.</p>
-              </div>
-          </div>
-        </ng-template>
-      </div>
 
-      <ng-template #noResults>
-        <p class="placeholder">No check run yet. Click "Run check".</p>
-      </ng-template>
+        <div class="tab-panel" *ngIf="resultTab === 'issues'" role="tabpanel">
+          <div class="issues" role="region" aria-labelledby="issues-heading">
+            <div class="issues-header">
+              <h3 id="issues-heading">Issues</h3>
+              <div class="issue-stats" *ngIf="issues.length" role="status">
+                <span class="stat-item error-stat">{{ getErrorCount() }} errors</span>
+                <span class="stat-item warn-stat">{{ getWarnCount() }} warnings</span>
+              </div>
+            </div>
+            <div class="filter-row" *ngIf="issues.length" role="group" aria-label="Filter issues by severity">
+              <button type="button" class="chip" [class.active]="issueFilter === 'all'" (click)="setIssueFilter('all')">All</button>
+              <button type="button" class="chip" [class.active]="issueFilter === 'error'" (click)="setIssueFilter('error')">Errors</button>
+              <button type="button" class="chip" [class.active]="issueFilter === 'warn'" (click)="setIssueFilter('warn')">Warnings</button>
+            </div>
+            <div class="issue-list" *ngIf="filteredIssues.length; else noIssues" role="list">
+              <div
+                class="issue"
+                *ngFor="let issue of filteredIssues; trackBy: trackByIssue"
+                role="listitem"
+                [attr.aria-label]="issue.severity + ': ' + issue.label"
+              >
+                <span
+                  class="badge"
+                  [class.ok]="issue.severity === 'ok'"
+                  [class.warn]="issue.severity === 'warn'"
+                  [class.error]="issue.severity === 'error'"
+                >
+                  {{ issue.severity.toUpperCase() }}
+                </span>
+                <div>
+                  <strong>{{ issue.label }}</strong>
+                  <p>{{ issue.detail }}</p>
+                  <span class="issue-location">{{ issue.location }}</span>
+                </div>
+              </div>
+            </div>
+            <ng-template #noIssues>
+              <div class="success-message">
+                <p class="placeholder" *ngIf="!issues.length">No issues detected. All validations passed.</p>
+                <p class="placeholder" *ngIf="issues.length">No issues match this filter.</p>
+              </div>
+            </ng-template>
+          </div>
+        </div>
+
+        <div class="tab-panel" *ngIf="resultTab === 'records'" role="tabpanel">
+          <p class="panel-lead">Record-level findings for data-provider notification.</p>
+          <div class="record-list" *ngIf="recordResults.length; else noRecords" role="list">
+            <div
+              class="record"
+              *ngFor="let record of recordResults; trackBy: trackByRecord"
+              role="listitem"
+              [class.record-fail]="record.status === 'fail'"
+              [class.record-warn]="record.status === 'warn'"
+            >
+              <div class="record-head">
+                <span class="badge" [class.error]="record.status === 'fail'" [class.warn]="record.status === 'warn'" [class.ok]="record.status === 'pass'">
+                  {{ record.status.toUpperCase() }}
+                </span>
+                <span class="mono">{{ record.recordId }}</span>
+                <span class="record-type">{{ record.resourceType }}</span>
+              </div>
+              <p>{{ record.message }}</p>
+              <span class="issue-location" *ngIf="record.violationCode">{{ record.violationCode }}</span>
+            </div>
+          </div>
+          <ng-template #noRecords>
+            <p class="placeholder">No record-level findings.</p>
+          </ng-template>
+        </div>
+      </ng-container>
     </section>
   </main>
 </div>

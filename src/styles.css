@@ -4,13 +4,17 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: #f1f5f9;
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(12, 74, 110, 0.08), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(14, 116, 144, 0.06), transparent 45%),
+    #eef2f6;
   color: #0f172a;
 }
 
 button,
 input,
-textarea {
+textarea,
+select {
   font-family: inherit;
 }
