@@ -99,7 +99,7 @@ async function main() {
 
   // --- Screen 8: config upload ---
   const configPath = path.join(__dirname, '..', 'configs', 'fhir-lab-v1.json');
-  await page.setInputFiles('input[aria-label="Upload validation configuration JSON"]', configPath);
+  await page.setInputFiles('input[aria-label="Upload validation configuration"]', configPath);
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(OUT, '10-config-loaded.png'), fullPage: true });
   assert((await page.getByText(/fhir-lab-v1\.json/i).count()) > 0, 'Config: uploaded filename shown');

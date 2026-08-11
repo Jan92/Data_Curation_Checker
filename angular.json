@@ -58,7 +58,10 @@
             "styles": [
               "src/styles.css"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "js-yaml"
+            ]
           },
           "configurations": {
             "production": {

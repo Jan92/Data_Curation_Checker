@@ -4,12 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { Observation, DiagnosticReport } from './models/fhir.types';
 import {
   runDataCurationCheck,
-  formatReportAsMarkdown,
-  formatReportAsHtml,
-  DEFAULT_FHIR_LAB_CONFIG,
-  resolveEffectiveConfig,
+  formatReport,
+  parseConfigFromText,
   validateValidationConfig,
+  resolveEffectiveConfig,
+  DEFAULT_FHIR_LAB_CONFIG,
   TOOL_VERSION,
+  BUILTIN_PLUGINS,
   type CheckResult,
   type CheckIssue,
   type CheckStatus,
@@ -19,7 +20,7 @@ import {
   type ValidationConfig,
   type RecordValidationResult,
   type EffectiveConfigRef
-} from './checks/fhir-observation-checks';
+} from './checks';
 
 type ResultTab = 'summary' | 'checks' | 'issues' | 'records';
 type IssueFilter = 'all' | 'error' | 'warn';
@@ -34,8 +35,7 @@ const CONTEXT_STORAGE_KEY = 'dcc-run-context-v1';
   styleUrls: ['./app.component.css']
 })
 /**
- * SEARCH Data Curation Checker (DCC) — medicalvalues
- * On-premise quality gate for curated/annotated datasets (D1.6 §4.2.3).
+ * Data Curation Checker — on-premise quality gate for curated/annotated datasets.
  */
 export class AppComponent {
   @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
@@ -43,6 +43,7 @@ export class AppComponent {
 
   readonly title = 'Data Curation Checker';
   readonly toolVersion = TOOL_VERSION;
+  readonly builtinPluginCount = BUILTIN_PLUGINS.length;
 
   /** Active validation config (default or user-uploaded). */
   activeConfig: ValidationConfig = DEFAULT_FHIR_LAB_CONFIG;
@@ -198,13 +199,7 @@ export class AppComponent {
   }
 
   private parseConfigText(text: string, fileName: string): ValidationConfig {
-    const lower = fileName.toLowerCase();
-    if (lower.endsWith('.yaml') || lower.endsWith('.yml')) {
-      throw new Error(
-        'YAML configs are supported via CLI (npm run check:cli -- --config …). In the UI, upload the JSON config (e.g. configs/fhir-lab-v1.json).'
-      );
-    }
-    return JSON.parse(text) as ValidationConfig;
+    return parseConfigFromText(text, fileName);
   }
 
   setResultTab(tab: ResultTab): void {
@@ -935,7 +930,7 @@ export class AppComponent {
   downloadJsonReport(): void {
     if (!this.lastRunReport) return;
     this.downloadBlob(
-      JSON.stringify(this.lastRunReport, null, 2),
+      formatReport(this.lastRunReport, 'json'),
       `dcc-report-${this.lastRunReport.runContext.datasetId || 'run'}.json`,
       'application/json'
     );
@@ -947,19 +942,19 @@ export class AppComponent {
   downloadMarkdownReport(): void {
     if (!this.lastRunReport) return;
     this.downloadBlob(
-      formatReportAsMarkdown(this.lastRunReport),
+      formatReport(this.lastRunReport, 'md'),
       `dcc-report-${this.lastRunReport.runContext.datasetId || 'run'}.md`,
       'text/markdown'
     );
   }
 
   /**
-   * Download printable HTML run report (D1.6 HTML; print to PDF from browser).
+   * Download printable HTML run report (print to PDF from browser).
    */
   downloadHtmlReport(): void {
     if (!this.lastRunReport) return;
     this.downloadBlob(
-      formatReportAsHtml(this.lastRunReport),
+      formatReport(this.lastRunReport, 'html'),
       `dcc-report-${this.lastRunReport.runContext.datasetId || 'run'}.html`,
       'text/html'
     );
@@ -970,7 +965,7 @@ export class AppComponent {
    */
   openPrintableReport(): void {
     if (!this.lastRunReport) return;
-    const html = formatReportAsHtml(this.lastRunReport);
+    const html = formatReport(this.lastRunReport, 'html');
     const win = window.open('', '_blank');
     if (!win) {
       this.validationError = 'Could not open print window. Allow pop-ups, or use Export HTML report.';
@@ -1104,6 +1099,10 @@ export class AppComponent {
 
   get recordResults(): RecordValidationResult[] {
     return this.lastRunReport?.recordResults ?? [];
+  }
+
+  get enabledSuiteCount(): number {
+    return this.lastRunReport?.checkSuites?.filter((s) => s.enabled).length ?? 0;
   }
 
   /**

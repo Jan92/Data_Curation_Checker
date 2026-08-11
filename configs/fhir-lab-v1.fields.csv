@@ -1,0 +1,15 @@
+entity,field,required,dataType,allowableValues,severity,regex,aliasOf
+Observation,resourceType,true,code,Observation,error,,
+Observation,status,true,code,registered|preliminary|final|amended|corrected|cancelled|entered-in-error|unknown,error,,
+Observation,code,true,CodeableConcept,,error,,
+Observation,subject,false,Reference,,warn,,
+Observation,performer,false,Reference,,warn,,
+Observation,effectiveDateTime,false,dateTime,,warn,,
+DiagnosticReport,resourceType,true,code,DiagnosticReport,error,,
+DiagnosticReport,status,true,code,registered|partial|preliminary|modified|final|amended|corrected|appended|cancelled|entered-in-error|unknown,error,,
+DiagnosticReport,code,true,CodeableConcept,,error,,
+DiagnosticReport,category,false,CodeableConcept,,warn,,
+DiagnosticReport,performer,false,Reference,,warn,,
+DiagnosticReport,result,false,Reference,,warn,,
+Observation,codeableConcept,false,,,,warn,code
+Observation,effective,false,,,,info,effectiveDateTime

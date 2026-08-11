@@ -2,7 +2,11 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "CommonJS",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
   },
+  "files": [],
   "include": ["scripts/**/*.ts", "src/app/checks/**/*.ts", "src/app/models/**/*.ts"]
 }

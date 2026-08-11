@@ -1,134 +1,181 @@
 #!/usr/bin/env node
 /**
- * SEARCH Data Curation Checker CLI (D1.6 §4.2.3 — medicalvalues).
- *
- * Reads FHIR JSON/NDJSON from --file or stdin, applies a versioned validation
- * config, and prints a machine-readable DCC run report (JSON) and optionally Markdown.
+ * Data Curation Checker CLI — validate FHIR datasets with a versioned config.
  *
  * Examples:
  *   npm run check:cli -- --file ./data.json
- *   npm run check:cli -- --file ./data.json --config ./configs/fhir-lab-v1.json --format md
- *   npm run check:cli -- --file ./data.json --dataset-id CAD-001 --source-site HYGEIA --mode local
+ *   npm run check:cli -- --file ./a.json --file ./b.json --format md --out report.md
+ *   npm run check:cli -- --dir ./datasets --config ./configs/fhir-lab-v1.yaml --gate-exit
+ *   npm run check:cli -- --file ./data.json --dataset-id CAD-001 --source-site local-lab --mode local
  */
 
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve, basename } from 'path';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { resolve, basename, dirname, join } from 'path';
 import {
   runDataCurationCheck,
-  formatReportAsMarkdown,
-  formatReportAsHtml,
-  resolveEffectiveConfig,
-  DEFAULT_FHIR_LAB_CONFIG
+  formatReport,
+  reportFileExtension,
+  type ValidationMode,
+  type DccRunReport
 } from '../src/app/checks/fhir-observation-checks';
-import type { ValidationConfig, ValidationMode } from '../src/app/checks/config/types';
+import {
+  argValue,
+  argValues,
+  hasFlag,
+  loadConfigFromPath,
+  collectInputFiles,
+  readStdin
+} from './lib/cli-utils';
 
-function argValue(args: string[], name: string): string | undefined {
-  const i = args.indexOf(name);
-  return i >= 0 && args[i + 1] ? args[i + 1] : undefined;
-}
+function printHelp(): void {
+  console.log(`Usage: check:cli [options]
 
-function hasFlag(args: string[], name: string): boolean {
-  return args.includes(name);
-}
+Input:
+  --file <path>          Dataset file (.json / .ndjson / .txt). Repeatable.
+  --dir <path>           Validate all .json/.ndjson/.txt files in a directory.
+  (stdin)                Used when no --file/--dir is given.
 
-async function readStdin(): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of process.stdin) chunks.push(chunk);
-  return Buffer.concat(chunks).toString('utf-8');
-}
+Config / context:
+  --config <path>        Validation config (.json / .yaml / .csv). Default: built-in fhir-lab-v1.
+  --dataset-id <id>      Dataset identifier (default: file name or stdin-dataset).
+  --source-site <site>   Source / site (default: local).
+  --mode <mode>          local | batch | interactive (default: batch).
+  --timeframe <text>     Optional timeframe label.
+  --license <text>       Optional license metadata.
+  --provenance <text>    Optional provenance metadata.
+  --fail-on-warn         Treat warnings as gate FAIL for this run.
 
-function loadConfig(path?: string): ValidationConfig {
-  if (!path) return DEFAULT_FHIR_LAB_CONFIG;
-  const abs = resolve(path);
-  const raw = readFileSync(abs, 'utf-8');
-  if (abs.endsWith('.yaml') || abs.endsWith('.yml')) {
-    // Lightweight YAML subset via JSON after stripping comments is not enough;
-    // prefer companion .json, or parse with a minimal key: value loader for our configs.
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const yaml = require('js-yaml') as { load: (s: string) => unknown };
-      return yaml.load(raw) as ValidationConfig;
-    } catch {
-      const jsonSibling = abs.replace(/\.ya?ml$/i, '.json');
-      try {
-        return JSON.parse(readFileSync(jsonSibling, 'utf-8')) as ValidationConfig;
-      } catch {
-        throw new Error(
-          `Cannot parse YAML config at ${abs}. Install js-yaml or use the JSON config: ${jsonSibling}`
-        );
-      }
-    }
-  }
-  return JSON.parse(raw) as ValidationConfig;
+Output:
+  --format <fmt>         json | md | html (default: json).
+  --out <path>           Write report to path (for multi-file: used as directory prefix).
+  --gate-exit            Exit code 2 when any run gate is FAIL.
+  --help, -h             Show this help.
+
+The same check engine is used by the web UI (runDataCurationCheck).`);
 }
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-
   if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
-    console.log(`Usage: check:cli [--file <path>] [--config <path>] [--format json|md|html]
-  [--dataset-id <id>] [--source-site <site>] [--mode local|batch|interactive]
-  [--timeframe <text>] [--out <path>] [--gate-exit]
-
-Reads from --file or stdin. Prints DCC run report as JSON (default), Markdown, or HTML.`);
+    printHelp();
     process.exit(0);
   }
 
-  const filePath = argValue(args, '--file');
+  const fileArgs = argValues(args, '--file');
+  const dirArg = argValue(args, '--dir');
   const configPath = argValue(args, '--config');
-  const format = (argValue(args, '--format') ?? 'json').toLowerCase();
+  const format = argValue(args, '--format') ?? 'json';
   const outPath = argValue(args, '--out');
   const datasetId = argValue(args, '--dataset-id');
   const sourceSite = argValue(args, '--source-site');
   const mode = (argValue(args, '--mode') as ValidationMode | undefined) ?? 'batch';
   const timeframe = argValue(args, '--timeframe');
+  const license = argValue(args, '--license');
+  const provenance = argValue(args, '--provenance');
   const gateExit = hasFlag(args, '--gate-exit');
+  const failOnWarn = hasFlag(args, '--fail-on-warn');
 
-  let content: string;
-  let source = 'stdin';
-  let sourceDetail: string | undefined;
-
-  if (filePath) {
-    content = readFileSync(resolve(filePath), 'utf-8');
-    source = 'File';
-    sourceDetail = filePath;
-  } else {
-    content = await readStdin();
+  const config = loadConfigFromPath(configPath);
+  if (failOnWarn) {
+    config.failOnWarn = true;
   }
 
-  const config = loadConfig(configPath);
-  // Validate config early (throws on invalid)
-  resolveEffectiveConfig(config);
+  const inputFiles = collectInputFiles(fileArgs, dirArg);
+  const reports: DccRunReport[] = [];
 
-  const report = runDataCurationCheck(content, {
-    source,
-    sourceDetail,
-    config,
-    runContext: {
-      datasetId: datasetId ?? (filePath ? basename(filePath) : 'stdin-dataset'),
-      sourceSite: sourceSite ?? 'local',
-      mode,
-      timeframe,
-      inputFiles: filePath ? [filePath] : [],
-      schemaVersion: config.version
+  if (!inputFiles.length) {
+    const content = await readStdin();
+    const report = runDataCurationCheck(content, {
+      source: 'stdin',
+      config,
+      runContext: {
+        datasetId: datasetId ?? 'stdin-dataset',
+        sourceSite: sourceSite ?? 'local',
+        mode,
+        timeframe,
+        license,
+        provenance,
+        inputFiles: [],
+        schemaVersion: config.version
+      }
+    });
+    reports.push(report);
+    emitReports(reports, format, outPath, gateExit);
+    return;
+  }
+
+  for (const filePath of inputFiles) {
+    const content = readFileSync(filePath, 'utf-8');
+    const report = runDataCurationCheck(content, {
+      source: 'File',
+      sourceDetail: filePath,
+      config,
+      runContext: {
+        datasetId: datasetId ?? basename(filePath),
+        sourceSite: sourceSite ?? 'local',
+        mode: inputFiles.length > 1 ? 'batch' : mode,
+        timeframe,
+        license,
+        provenance,
+        inputFiles: [filePath],
+        schemaVersion: config.version
+      }
+    });
+    reports.push(report);
+  }
+
+  emitReports(reports, format, outPath, gateExit);
+}
+
+function emitReports(
+  reports: DccRunReport[],
+  format: string,
+  outPath: string | undefined,
+  gateExit: boolean
+): void {
+  if (reports.length === 1) {
+    const output = formatReport(reports[0], format);
+    if (outPath) {
+      writeFileSync(resolve(outPath), output, 'utf-8');
+      console.error(`Wrote report to ${outPath} (gate=${reports[0].gate})`);
+    } else {
+      console.log(output);
     }
-  });
-
-  const output =
-    format === 'md' || format === 'markdown'
-      ? formatReportAsMarkdown(report)
-      : format === 'html' || format === 'htm'
-        ? formatReportAsHtml(report)
-        : JSON.stringify(report, null, 2);
-
-  if (outPath) {
-    writeFileSync(resolve(outPath), output, 'utf-8');
-    console.error(`Wrote report to ${outPath} (gate=${report.gate})`);
   } else {
-    console.log(output);
+    const summary = {
+      runs: reports.length,
+      pass: reports.filter((r) => r.gate === 'PASS').length,
+      fail: reports.filter((r) => r.gate === 'FAIL').length,
+      results: reports.map((r) => ({
+        datasetId: r.runContext.datasetId,
+        gate: r.gate,
+        errors: r.summary.errorCount,
+        warnings: r.summary.warnCount,
+        inputFiles: r.runContext.inputFiles
+      }))
+    };
+
+    if (outPath) {
+      const outDir = resolve(outPath);
+      mkdirSync(outDir, { recursive: true });
+      writeFileSync(join(outDir, 'batch-summary.json'), JSON.stringify(summary, null, 2), 'utf-8');
+      const ext = reportFileExtension(format);
+      reports.forEach((r, i) => {
+        const name = `${String(i + 1).padStart(3, '0')}-${r.runContext.datasetId}.${ext}`;
+        writeFileSync(join(outDir, name), formatReport(r, format), 'utf-8');
+      });
+      console.error(`Wrote ${reports.length} reports + batch-summary.json to ${outDir}`);
+    } else if (format === 'json') {
+      console.log(JSON.stringify({ summary, reports }, null, 2));
+    } else {
+      console.log(reports.map((r) => formatReport(r, format)).join('\n\n---\n\n'));
+    }
+    console.error(
+      `Batch: ${summary.pass} PASS, ${summary.fail} FAIL (of ${summary.runs})`
+    );
   }
 
-  if (gateExit && report.gate === 'FAIL') {
+  if (gateExit && reports.some((r) => r.gate === 'FAIL')) {
     process.exit(2);
   }
 }

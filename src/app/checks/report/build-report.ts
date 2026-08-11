@@ -1,5 +1,5 @@
 /**
- * Human-readable and machine-readable DCC run reports (D1.6 §4.2.3).
+ * Human-readable and machine-readable DCC run reports.
  */
 
 import type { CheckIssue, CheckResult, ParseResult } from '../types';
@@ -11,7 +11,7 @@ import type {
   RecordValidationResult
 } from '../config/types';
 
-export const TOOL_VERSION = '0.2.0';
+export const TOOL_VERSION = '0.4.0';
 
 export interface DccRunReport {
   gate: GateStatus;
@@ -23,6 +23,8 @@ export interface DccRunReport {
   issues: CheckIssue[];
   checkResults: CheckResult[];
   recordResults: RecordValidationResult[];
+  /** Differentiated check suite results (pipeline stages). */
+  checkSuites?: import('../types').CheckSuiteResult[];
 }
 
 export function decideGate(
@@ -38,13 +40,17 @@ export function decideGate(
   return 'PASS';
 }
 
+function inferResourceType(location: string): string {
+  if (location.startsWith('DiagnosticReport')) return 'DiagnosticReport';
+  if (location.startsWith('Observation')) return 'Observation';
+  if (location === 'RunContext' || location === 'Dataset' || location === 'System') return location;
+  return 'Unknown';
+}
+
+/** Record-level findings: one entry per issue (violation), with stable recordId. */
 export function buildRecordResults(issues: CheckIssue[]): RecordValidationResult[] {
   return issues.map((issue, index) => {
-    const resourceType = issue.location.startsWith('DiagnosticReport')
-      ? 'DiagnosticReport'
-      : issue.location.startsWith('Observation')
-        ? 'Observation'
-        : 'Unknown';
+    const resourceType = inferResourceType(issue.location);
     const status =
       issue.severity === 'error' ? 'fail' : issue.severity === 'warn' ? 'warn' : 'pass';
     return {
@@ -59,27 +65,84 @@ export function buildRecordResults(issues: CheckIssue[]): RecordValidationResult
   });
 }
 
+function resourceKeysFromParse(parseResult: ParseResult): string[] {
+  const keys: string[] = [];
+  (parseResult.resources ?? []).forEach((r, i) => {
+    const id = (r as { id?: string }).id ?? String(i + 1);
+    keys.push(`Observation/${id}`);
+  });
+  (parseResult.diagnosticReports ?? []).forEach((r, i) => {
+    const id = (r as { id?: string }).id ?? String(i + 1);
+    keys.push(`DiagnosticReport/${id}`);
+  });
+  return keys;
+}
+
 export function buildSummary(
   parseResult: ParseResult,
   issues: CheckIssue[],
   laboratoryCount: number,
-  toolVersion: string
+  toolVersion: string,
+  config: EffectiveConfigRef
 ): DatasetSummary {
   const errorCount = issues.filter((i) => i.severity === 'error').length;
   const warnCount = issues.filter((i) => i.severity === 'warn').length;
   const observationCount = parseResult.resources?.length ?? 0;
   const diagnosticReportCount = parseResult.diagnosticReports?.length ?? 0;
-  const totalRecords = observationCount + diagnosticReportCount;
+  const resourceKeys = resourceKeysFromParse(parseResult);
+
+  let failCount = 0;
+  let warnRecordCount = 0;
+  let passCount = 0;
+  for (const key of resourceKeys) {
+    const related = issues.filter(
+      (i) => i.location === key || i.location.startsWith(key + ' ') || i.location.startsWith(key + '·') || i.location.startsWith(key + ' ·')
+    );
+    // Also match "Observation 1" style locations from legacy checks
+    const altRelated =
+      related.length > 0
+        ? related
+        : issues.filter((i) => {
+            const base = key.split('/')[0];
+            return i.location.startsWith(base);
+          });
+    // Prefer exact id match when possible
+    const scoped = issues.filter((i) => {
+      if (i.location === key) return true;
+      const [type, id] = key.split('/');
+      return (
+        i.location.includes(`${type}/${id}`) ||
+        i.location === `${type} ${id}` ||
+        (i.location.startsWith(`${type} `) && i.location.includes(id))
+      );
+    });
+    const bucket = scoped.length ? scoped : altRelated.length && resourceKeys.length === 1 ? altRelated : scoped;
+    if (bucket.some((i) => i.severity === 'error')) failCount += 1;
+    else if (bucket.some((i) => i.severity === 'warn')) warnRecordCount += 1;
+    else passCount += 1;
+  }
+
+  // If we could not attribute issues to resources, fall back to totals.
+  if (!resourceKeys.length) {
+    failCount = errorCount > 0 ? 1 : 0;
+    warnRecordCount = errorCount === 0 && warnCount > 0 ? 1 : 0;
+    passCount = errorCount === 0 && warnCount === 0 ? 0 : passCount;
+  }
+
   return {
     observationCount,
     diagnosticReportCount,
     laboratoryCount,
     errorCount,
     warnCount,
-    passCount: Math.max(0, totalRecords - (errorCount > 0 ? 1 : 0)),
-    failCount: errorCount > 0 ? totalRecords : 0,
+    passCount,
+    failCount,
+    warnRecordCount,
+    violationCount: errorCount + warnCount,
     timestamp: new Date().toISOString(),
-    toolVersion
+    toolVersion,
+    configVersion: config.version,
+    configHash: config.hash
   };
 }
 
@@ -91,6 +154,7 @@ export function buildDccRunReport(input: {
   config: EffectiveConfigRef;
   runContext: DatasetRunContext;
   toolVersion?: string;
+  checkSuites?: import('../types').CheckSuiteResult[];
 }): DccRunReport {
   const toolVersion = input.toolVersion ?? TOOL_VERSION;
   const gate = decideGate(input.issues, {
@@ -102,15 +166,22 @@ export function buildDccRunReport(input: {
     toolVersion,
     config: input.config,
     runContext: input.runContext,
-    summary: buildSummary(input.parseResult, input.issues, input.laboratoryCount, toolVersion),
+    summary: buildSummary(
+      input.parseResult,
+      input.issues,
+      input.laboratoryCount,
+      toolVersion,
+      input.config
+    ),
     parseResult: input.parseResult,
     issues: input.issues,
     checkResults: input.checkResults,
-    recordResults: buildRecordResults(input.issues)
+    recordResults: buildRecordResults(input.issues),
+    checkSuites: input.checkSuites
   };
 }
 
-/** Optional human-readable Markdown report (D1.6). */
+/** Human-readable Markdown report. */
 export function formatReportAsMarkdown(report: DccRunReport): string {
   const lines: string[] = [];
   lines.push(`# Data Curation Checker — Validation Report`);
@@ -135,6 +206,7 @@ export function formatReportAsMarkdown(report: DccRunReport): string {
   lines.push(`- Version: \`${report.config.version}\``);
   lines.push(`- Hash: \`${report.config.hash}\``);
   lines.push(`- Name: ${report.config.snapshot.name}`);
+  lines.push(`- Plugins: ${(report.config.snapshot.plugins ?? []).join(', ') || '—'}`);
   lines.push('');
   lines.push(`## Summary`);
   lines.push(`| Metric | Value |`);
@@ -142,20 +214,50 @@ export function formatReportAsMarkdown(report: DccRunReport): string {
   lines.push(`| Observations | ${report.summary.observationCount} |`);
   lines.push(`| DiagnosticReports | ${report.summary.diagnosticReportCount} |`);
   lines.push(`| Laboratory observations | ${report.summary.laboratoryCount} |`);
+  lines.push(`| Pass records | ${report.summary.passCount} |`);
+  lines.push(`| Fail records | ${report.summary.failCount} |`);
+  lines.push(`| Warn records | ${report.summary.warnRecordCount} |`);
   lines.push(`| Errors | ${report.summary.errorCount} |`);
   lines.push(`| Warnings | ${report.summary.warnCount} |`);
+  lines.push(`| Violations | ${report.summary.violationCount} |`);
   lines.push('');
+  if (report.checkSuites?.length) {
+    lines.push(`## Check suites`);
+    lines.push(`| Suite | Status | Errors | Warnings | Detail |`);
+    lines.push(`|-------|--------|--------|----------|--------|`);
+    for (const s of report.checkSuites) {
+      lines.push(
+        `| ${s.label}${s.enabled ? '' : ' (skipped)'} | ${s.statusLabel} | ${s.errorCount} | ${s.warnCount} | ${s.detail.replace(/\|/g, '/')} |`
+      );
+    }
+    lines.push('');
+  }
   lines.push(`## Issues`);
   if (!report.issues.length) {
     lines.push('_No issues detected._');
   } else {
     for (const issue of report.issues) {
-      lines.push(`- **[${issue.severity.toUpperCase()}]** ${issue.label} — ${issue.detail} _(${issue.location})_`);
+      lines.push(
+        `- **[${issue.severity.toUpperCase()}]** ${issue.label} — ${issue.detail} _(${issue.location})_`
+      );
+    }
+  }
+  lines.push('');
+  lines.push(`## Record-level findings`);
+  if (!report.recordResults.length) {
+    lines.push('_No record-level findings._');
+  } else {
+    for (const r of report.recordResults) {
+      lines.push(
+        `- \`${r.recordId}\` [${r.status}] ${r.violationCode ?? ''} — ${r.message}`
+      );
     }
   }
   lines.push('');
   lines.push(`---`);
-  lines.push(`_SEARCH Data Curation Checker (medicalvalues). Syntactic/structural validation only; no clinical interpretation._`);
+  lines.push(
+    `_Data Curation Checker. Syntactic/structural validation only; no clinical interpretation._`
+  );
   lines.push('');
   return lines.join('\n');
 }
@@ -168,7 +270,7 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
-/** Optional human-readable HTML report (D1.6) — printable in browser / save as PDF. */
+/** Printable HTML report (use browser Print → Save as PDF). */
 export function formatReportAsHtml(report: DccRunReport): string {
   const gateColor = report.gate === 'PASS' ? '#065f46' : '#991b1b';
   const gateBg = report.gate === 'PASS' ? '#ecfdf5' : '#fef2f2';
@@ -227,13 +329,15 @@ export function formatReportAsHtml(report: DccRunReport): string {
   </style>
 </head>
 <body>
-  <p class="meta">SEARCH · Data Curation Checker · medicalvalues · tool v${escapeHtml(report.toolVersion)}</p>
+  <p class="meta">Data Curation Checker · tool v${escapeHtml(report.toolVersion)} · config ${escapeHtml(report.config.id)}@${escapeHtml(report.config.version)} (${escapeHtml(report.config.hash)})</p>
   <h1>Validation report</h1>
   <p class="gate">${report.gate}</p>
   <div class="grid">
     <div class="card"><strong>${report.summary.observationCount}</strong><span>Observations</span></div>
     <div class="card"><strong>${report.summary.diagnosticReportCount}</strong><span>DiagnosticReports</span></div>
     <div class="card"><strong>${report.summary.laboratoryCount}</strong><span>Laboratory</span></div>
+    <div class="card"><strong>${report.summary.passCount}</strong><span>Pass records</span></div>
+    <div class="card"><strong>${report.summary.failCount}</strong><span>Fail records</span></div>
     <div class="card"><strong>${report.summary.errorCount}</strong><span>Errors</span></div>
     <div class="card"><strong>${report.summary.warnCount}</strong><span>Warnings</span></div>
   </div>
@@ -251,6 +355,7 @@ export function formatReportAsHtml(report: DccRunReport): string {
     <tr><th>Version</th><td>${escapeHtml(report.config.version)}</td></tr>
     <tr><th>Hash</th><td class="mono">${escapeHtml(report.config.hash)}</td></tr>
     <tr><th>Name</th><td>${escapeHtml(report.config.snapshot.name)}</td></tr>
+    <tr><th>Plugins</th><td>${escapeHtml((report.config.snapshot.plugins ?? []).join(', ') || '—')}</td></tr>
   </table>
   <h2>Issues</h2>
   <table>
@@ -262,7 +367,7 @@ export function formatReportAsHtml(report: DccRunReport): string {
     <thead><tr><th>Record</th><th>Type</th><th>Status</th><th>Message</th></tr></thead>
     <tbody>${recordRows}</tbody>
   </table>
-  <footer>Syntactic/structural validation only; no clinical interpretation. On FAIL, notify the data provider before Platform Uploader.</footer>
+  <footer>Syntactic/structural validation only; no clinical interpretation. On FAIL, notify the data provider before upload.</footer>
 </body>
 </html>`;
 }

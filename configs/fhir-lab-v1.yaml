@@ -1,12 +1,10 @@
-# SEARCH Data Curation Checker — validation configuration (D1.6 §4.2.3)
-# medicalvalues GmbH — on-premise syntactic / structural quality gate
-
+# Data Curation Checker — validation configuration
 id: fhir-lab-v1
 version: "1.0.0"
 name: FHIR Laboratory Observation & DiagnosticReport
 description: >
-  Syntactic and structural validation for FHIR R4 Observation and
-  DiagnosticReport resources in laboratory medicine (SEARCH DCC demonstrator).
+  Syntactic and structural validation for FHIR R4 Observation and DiagnosticReport
+  resources in laboratory medicine.
 formats:
   - json
   - ndjson
@@ -17,36 +15,62 @@ entities:
   - name: Observation
     description: FHIR R4 Observation (laboratory)
     requiredFields: [resourceType, status, code]
-    optionalFields:
-      - subject
-      - effectiveDateTime
-      - issued
-      - performer
-      - valueQuantity
-      - referenceRange
-      - specimen
-      - category
+    optionalFields: [subject, effectiveDateTime, issued, performer, valueQuantity, referenceRange, specimen, category]
+    fields:
+      - name: status
+        required: true
+        allowableValues: [registered, preliminary, final, amended, corrected, cancelled, entered-in-error, unknown]
+        severity: error
+      - name: code
+        required: true
+        severity: error
+      - name: performer
+        required: false
+        severity: warn
+    primaryKeys: [id]
   - name: DiagnosticReport
     description: FHIR DiagnosticReport
     requiredFields: [resourceType, status, code]
-    optionalFields:
-      - category
-      - subject
-      - effectiveDateTime
-      - issued
-      - performer
-      - result
-      - specimen
-metadataRequirements:
-  - datasetId
-  - sourceSite
-  - schemaVersion
-  - toolVersion
-  - license
-  - provenance
+    optionalFields: [category, subject, effectiveDateTime, issued, performer, result, specimen]
+    fields:
+      - name: status
+        required: true
+        allowableValues: [registered, partial, preliminary, modified, final, amended, corrected, appended, cancelled, entered-in-error, unknown]
+        severity: error
+      - name: code
+        required: true
+        severity: error
+      - name: category
+        required: false
+        severity: warn
+      - name: performer
+        required: false
+        severity: warn
+      - name: result
+        required: false
+        severity: warn
+    primaryKeys: [id]
+metadataRequirements: [datasetId, sourceSite, schemaVersion, toolVersion, license, provenance]
 plugins:
   - fhir-observation
   - fhir-diagnostic-report
   - laboratory-loinc
+  - cross-references
+  - primary-keys
+  - datetime-formats
+  - vocabulary
+  - completeness
+  - identifier-format
+  - config-entity-rules
+  - metadata-requirements
+  - expected-files
+  - reproducibility
+aliases:
+  - from: codeableConcept
+    to: code
+    severity: warn
+  - from: effective
+    to: effectiveDateTime
+    severity: info
 failOnError: true
 failOnWarn: false

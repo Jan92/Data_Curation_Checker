@@ -1,7 +1,8 @@
 import type { ConfigValidationIssue, ConfigValidationReport, ValidationConfig } from './types';
+import { BUILTIN_PLUGIN_IDS } from '../plugins/registry';
 
 /**
- * Validates a validation configuration before it is used for dataset checks (D1.6).
+ * Validates a validation configuration before it is used for dataset checks.
  * Invalid configs are rejected with a separate configuration validation report.
  */
 export function validateValidationConfig(config: unknown): ConfigValidationReport {
@@ -10,7 +11,7 @@ export function validateValidationConfig(config: unknown): ConfigValidationRepor
   if (!config || typeof config !== 'object') {
     return {
       ok: false,
-      issues: [{ severity: 'error', path: '', message: 'Config must be a JSON/YAML object.' }]
+      issues: [{ severity: 'error', path: '', message: 'Config must be a JSON/YAML/CSV-derived object.' }]
     };
   }
 
@@ -42,6 +43,37 @@ export function validateValidationConfig(config: unknown): ConfigValidationRepor
           message: 'requiredFields must be an array of strings.'
         });
       }
+      if (entity?.fields) {
+        if (!Array.isArray(entity.fields)) {
+          issues.push({
+            severity: 'error',
+            path: `entities[${i}].fields`,
+            message: 'fields must be an array.'
+          });
+        } else {
+          entity.fields.forEach((field, fi) => {
+            if (!field?.name) {
+              issues.push({
+                severity: 'error',
+                path: `entities[${i}].fields[${fi}].name`,
+                message: 'Field name is required.'
+              });
+            }
+            if (field?.regex) {
+              try {
+                // eslint-disable-next-line no-new
+                new RegExp(field.regex);
+              } catch {
+                issues.push({
+                  severity: 'error',
+                  path: `entities[${i}].fields[${fi}].regex`,
+                  message: `Invalid regex: ${field.regex}`
+                });
+              }
+            }
+          });
+        }
+      }
     });
   }
   if (!Array.isArray(c.metadataRequirements)) {
@@ -53,6 +85,34 @@ export function validateValidationConfig(config: unknown): ConfigValidationRepor
   }
   if (!Array.isArray(c.plugins)) {
     issues.push({ severity: 'warn', path: 'plugins', message: 'plugins should be an array (may be empty).' });
+  } else {
+    c.plugins.forEach((plugin, i) => {
+      if (!BUILTIN_PLUGIN_IDS.has(plugin)) {
+        issues.push({
+          severity: 'error',
+          path: `plugins[${i}]`,
+          message: `Unknown plugin "${plugin}". Supported: ${[...BUILTIN_PLUGIN_IDS].join(', ')}.`
+        });
+      }
+    });
+  }
+  if (c.aliases) {
+    if (!Array.isArray(c.aliases)) {
+      issues.push({ severity: 'error', path: 'aliases', message: 'aliases must be an array.' });
+    } else {
+      c.aliases.forEach((alias, i) => {
+        if (!alias?.from || !alias?.to) {
+          issues.push({
+            severity: 'error',
+            path: `aliases[${i}]`,
+            message: 'Each alias requires "from" and "to".'
+          });
+        }
+      });
+    }
+  }
+  if (c.expectedFiles && !Array.isArray(c.expectedFiles)) {
+    issues.push({ severity: 'error', path: 'expectedFiles', message: 'expectedFiles must be an array of strings.' });
   }
 
   const errorCount = issues.filter((x) => x.severity === 'error').length;

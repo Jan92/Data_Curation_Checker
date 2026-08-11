@@ -11,6 +11,11 @@ export * from './types';
 export { DEFAULT_FHIR_LAB_CONFIG } from './default-config';
 export { hashConfig } from './hash';
 export { validateValidationConfig } from './validate-config';
+export {
+  applyConfigEntityRules,
+  applyMetadataRequirements,
+  applyExpectedFilesCheck
+} from './apply-config-rules';
 
 export function resolveEffectiveConfig(config?: ValidationConfig): EffectiveConfigRef {
   const snapshot = config ?? DEFAULT_FHIR_LAB_CONFIG;

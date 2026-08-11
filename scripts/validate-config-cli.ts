@@ -1,50 +1,69 @@
 #!/usr/bin/env node
 /**
- * Validate a DCC validation configuration (YAML/JSON) before dataset runs (D1.6).
+ * Validate a DCC validation configuration (JSON / YAML / CSV) before dataset runs.
  *
  * Examples:
  *   npm run check:config -- --config ./configs/fhir-lab-v1.json
  *   npm run check:config -- --config ./configs/fhir-lab-v1.yaml
+ *   npm run check:config -- --config ./configs/fhir-lab-v1.fields.csv
+ *   npm run check:config
  */
 
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import {
   validateValidationConfig,
   hashConfig,
   resolveEffectiveConfig,
-  DEFAULT_FHIR_LAB_CONFIG
+  DEFAULT_FHIR_LAB_CONFIG,
+  BUILTIN_PLUGINS
 } from '../src/app/checks/fhir-observation-checks';
-import type { ValidationConfig } from '../src/app/checks/config/types';
+import { argValue, hasFlag, loadConfigFromPath } from './lib/cli-utils';
 
-function argValue(args: string[], name: string): string | undefined {
-  const i = args.indexOf(name);
-  return i >= 0 && args[i + 1] ? args[i + 1] : undefined;
-}
+function printHelp(): void {
+  console.log(`Usage: check:config [--config <path>] [--list-plugins]
 
-function loadConfig(path?: string): ValidationConfig {
-  if (!path) return DEFAULT_FHIR_LAB_CONFIG;
-  const abs = resolve(path);
-  const raw = readFileSync(abs, 'utf-8');
-  if (abs.endsWith('.yaml') || abs.endsWith('.yml')) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const yaml = require('js-yaml') as { load: (s: string) => unknown };
-      return yaml.load(raw) as ValidationConfig;
-    } catch {
-      const jsonSibling = abs.replace(/\.ya?ml$/i, '.json');
-      return JSON.parse(readFileSync(jsonSibling, 'utf-8')) as ValidationConfig;
-    }
-  }
-  return JSON.parse(raw) as ValidationConfig;
+  --config <path>   JSON, YAML, or CSV validation schema (default: built-in).
+  --list-plugins    Print built-in plugin ids and exit.
+  --help, -h        Show this help.
+
+Rejects invalid configs with a configuration validation report (exit 1).`);
 }
 
 function main(): void {
   const args = process.argv.slice(2);
-  const configPath = argValue(args, '--config');
-  const config = loadConfig(configPath);
-  const report = validateValidationConfig(config);
+  if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
+    printHelp();
+    process.exit(0);
+  }
+  if (hasFlag(args, '--list-plugins')) {
+    console.log(JSON.stringify(BUILTIN_PLUGINS, null, 2));
+    process.exit(0);
+  }
 
+  const configPath = argValue(args, '--config');
+  let config;
+  try {
+    config = loadConfigFromPath(configPath);
+  } catch (err) {
+    console.log(
+      JSON.stringify(
+        {
+          ok: false,
+          issues: [
+            {
+              severity: 'error',
+              path: configPath ?? '(default)',
+              message: err instanceof Error ? err.message : String(err)
+            }
+          ]
+        },
+        null,
+        2
+      )
+    );
+    process.exit(1);
+  }
+
+  const report = validateValidationConfig(config);
   if (report.ok) {
     const effective = resolveEffectiveConfig(config);
     console.log(
@@ -54,6 +73,10 @@ function main(): void {
           id: effective.id,
           version: effective.version,
           hash: effective.hash,
+          plugins: effective.snapshot.plugins,
+          entities: effective.snapshot.entities.map((e) => e.name),
+          formats: effective.snapshot.formats,
+          metadataRequirements: effective.snapshot.metadataRequirements,
           issues: report.issues
         },
         null,
@@ -67,7 +90,7 @@ function main(): void {
     JSON.stringify(
       {
         ok: false,
-        hash: hashConfig(config),
+        hash: hashConfig(config ?? DEFAULT_FHIR_LAB_CONFIG),
         issues: report.issues
       },
       null,

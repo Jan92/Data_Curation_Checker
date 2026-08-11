@@ -1,25 +1,48 @@
 /**
  * FHIR Observation validation checks.
  * Pure TypeScript – no Angular. Use from UI, Node, or CLI.
- * SEARCH Data Curation Checker (DCC) module — medicalvalues (D1.6 §4.2.3).
  */
 
+import type { CheckResult, CheckIssue, CheckStatus, CheckCategory, CheckSuiteResult, ParseResult, ValidationReport, ValidateOptions } from './types';
 import { Observation, Bundle, DiagnosticReport } from '../models/fhir.types';
-import type { CheckResult, CheckIssue, CheckStatus, ParseResult, ValidationReport, ValidateOptions } from './types';
-import { resolveEffectiveConfig, defaultRunContext } from './config';
+import {
+  resolveEffectiveConfig,
+  defaultRunContext
+} from './config';
 import { buildDccRunReport, type DccRunReport } from './report/build-report';
+import { runCheckPipeline } from './pipeline/run-pipeline';
 
-export type { CheckResult, CheckIssue, CheckStatus, ParseResult, ValidationReport, ValidateOptions };
+export type { CheckResult, CheckIssue, CheckStatus, CheckCategory, CheckSuiteResult, ParseResult, ValidationReport, ValidateOptions };
 export type { DccRunReport };
 export { formatReportAsMarkdown, formatReportAsHtml, TOOL_VERSION } from './report/build-report';
+export { formatReport, normalizeReportFormat, reportFileExtension } from './io/format-report';
+export {
+  parseConfigFromText,
+  loadAndValidateConfigText,
+  detectConfigKind,
+  parseConfigCsv
+} from './io/load-config';
 export {
   DEFAULT_FHIR_LAB_CONFIG,
   resolveEffectiveConfig,
   defaultRunContext,
   validateValidationConfig,
-  hashConfig
+  hashConfig,
+  applyConfigEntityRules,
+  applyMetadataRequirements,
+  applyExpectedFilesCheck
 } from './config';
-export type { DatasetRunContext, ValidationConfig, GateStatus, ValidationMode, EffectiveConfigRef, RecordValidationResult } from './config';
+export { BUILTIN_PLUGINS, BUILTIN_PLUGIN_IDS } from './plugins/registry';
+export { runCheckPipeline } from './pipeline/run-pipeline';
+export type {
+  DatasetRunContext,
+  ValidationConfig,
+  GateStatus,
+  ValidationMode,
+  EffectiveConfigRef,
+  RecordValidationResult,
+  AliasMapping
+} from './config';
 
 export class FhirObservationChecker {
   validate(content: string, options?: ValidateOptions): ValidationReport {
@@ -3087,28 +3110,41 @@ export function validateFhirObservations(content: string, options?: ValidateOpti
 }
 
 /**
- * Full DCC run: FHIR checks + config versioning + gate + record-level results (D1.6 §4.2.3).
+ * Full DCC run: differentiated check-suite pipeline + gate + record-level results.
  */
 export function runDataCurationCheck(content: string, options?: ValidateOptions): DccRunReport {
   const checker = new FhirObservationChecker();
   const base = checker.validate(content, options);
   const config = resolveEffectiveConfig(options?.config);
+  const source = options?.source ?? 'Input';
+  const sourceDetail = options?.sourceDetail;
   const runContext = defaultRunContext({
     ...options?.runContext,
+    schemaVersion: options?.runContext?.schemaVersion ?? config.version,
     inputFiles:
       options?.runContext?.inputFiles?.length
         ? options.runContext.inputFiles
-        : options?.sourceDetail
-          ? [options.sourceDetail]
+        : sourceDetail
+          ? [sourceDetail]
           : []
+  });
+
+  const { suites, issues, checkResults } = runCheckPipeline({
+    base,
+    config,
+    runContext,
+    options,
+    source,
+    sourceDetail
   });
 
   return buildDccRunReport({
     parseResult: base.parseResult,
-    issues: base.issues,
-    checkResults: base.checkResults,
+    issues,
+    checkResults,
     laboratoryCount: base.laboratoryCount ?? 0,
     config,
-    runContext
+    runContext,
+    checkSuites: suites
   });
 }

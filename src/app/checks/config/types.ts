@@ -1,6 +1,5 @@
 /**
- * Configuration and run-context types for the SEARCH Data Curation Checker (DCC).
- * Aligned with D1.6 §4.2.3 (medicalvalues).
+ * Configuration and run-context types for the Data Curation Checker (DCC).
  */
 
 export type ValidationMode = 'local' | 'batch' | 'interactive';
@@ -33,6 +32,15 @@ export interface EntityRule {
   requiredFields?: string[];
   optionalFields?: string[];
   fields?: EntityFieldRule[];
+  /** Primary key field names for duplicate detection within the entity set. */
+  primaryKeys?: string[];
+}
+
+/** Map a legacy / alternate field or column name onto a canonical field. */
+export interface AliasMapping {
+  from: string;
+  to: string;
+  severity?: FieldSeverity;
 }
 
 export interface ValidationConfig {
@@ -44,6 +52,10 @@ export interface ValidationConfig {
   entities: EntityRule[];
   metadataRequirements: string[];
   plugins: string[];
+  /** Optional expected input file names (informational / batch checks). */
+  expectedFiles?: string[];
+  /** Legacy name → canonical field mappings. */
+  aliases?: AliasMapping[];
   /** If true, any error fails the quality gate (default true). */
   failOnError?: boolean;
   /** If true, warnings also fail the gate (default false). */
@@ -87,8 +99,12 @@ export interface DatasetSummary {
   warnCount: number;
   passCount: number;
   failCount: number;
+  warnRecordCount: number;
+  violationCount: number;
   timestamp: string;
   toolVersion: string;
+  configVersion: string;
+  configHash: string;
 }
 
 export type GateStatus = 'PASS' | 'FAIL';
