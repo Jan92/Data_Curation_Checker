@@ -114,6 +114,25 @@ export function validateValidationConfig(config: unknown): ConfigValidationRepor
   if (c.expectedFiles && !Array.isArray(c.expectedFiles)) {
     issues.push({ severity: 'error', path: 'expectedFiles', message: 'expectedFiles must be an array of strings.' });
   }
+  if (c.crossFileReferences) {
+    if (!Array.isArray(c.crossFileReferences)) {
+      issues.push({
+        severity: 'error',
+        path: 'crossFileReferences',
+        message: 'crossFileReferences must be an array.'
+      });
+    } else {
+      c.crossFileReferences.forEach((ref, i) => {
+        if (!ref?.fromEntity || !ref?.fromField || !ref?.toEntity || !ref?.toField) {
+          issues.push({
+            severity: 'error',
+            path: `crossFileReferences[${i}]`,
+            message: 'Each cross-file reference requires fromEntity, fromField, toEntity, toField.'
+          });
+        }
+      });
+    }
+  }
 
   const errorCount = issues.filter((x) => x.severity === 'error').length;
   return { ok: errorCount === 0, issues };

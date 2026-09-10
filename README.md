@@ -10,12 +10,44 @@ The same validation engine powers the **web UI** and the **CLI scripts**.
 
 - Import validation schemas from **JSON**, **YAML**, and **CSV**
 - Versioned configs with **hash + snapshot** per run
-- Dataset/run context (dataset ID, source/site, timeframe, mode, files, license, provenance)
-- **Differentiated check suites** via `runDataCurationCheck` (ingest, dataset integrity, FHIR Observation/DiagnosticReport, laboratory/LOINC, cross-references, primary keys, date/time, vocabularies, completeness, identifier formats, config rules, metadata, expected files, reproducibility)
-- Dataset-level summary + **record-level** findings
-- Quality gate **PASS / FAIL**
-- Reports: **JSON**, **Markdown**, **HTML** (print → PDF)
+- Dataset/run context (dataset ID, study ID, dictionary ref, source/site, timeframe, mode, files, license, provenance)
+- **SHIELD study dictionaries:** SHIELD-CC-2025 / SHIELD-OC-2025 (V2 & V3) as declarative configs for automated refresh QA
+- Dictionary-driven **tabular/CSV** validation: expected files, tables/columns, data types, required/optional fields, allowable values, patterns, primary keys, cross-file references, aliases
+- FHIR Observation / DiagnosticReport suites (lab demonstrator)
+- Dataset-level summary (row counts, pass/fail, violations by field/code, missing/unexpected files & columns, config/tool versions, timestamps)
+- Per-record results (record id, status, violation code, field, raw value, severity)
+- Optional human-readable reports: **JSON**, **Markdown**, **HTML** (print → PDF)
 - Built-in plugin registry (extensible ids)
+
+---
+
+## SHIELD study datasets (forthcoming reporting period)
+
+The checker is intended for deterministic, configuration-driven validation of **SHIELD-CC-2025** and **SHIELD-OC-2025** study packages. Dictionary V2/V3 configs express curation/QA rules declaratively so each data refresh can be re-verified automatically and yield documented syntactic quality evidence before de-identification and transfer to UTH.
+
+| Config | Study | Dictionary |
+|--------|-------|------------|
+| `configs/shield-cc-2025-v2.json` | SHIELD-CC-2025 | Appendix 10 V2 |
+| `configs/shield-cc-2025-v3.json` | SHIELD-CC-2025 | Appendix 10 V3 |
+| `configs/shield-oc-2025-v2.json` | SHIELD-OC-2025 | Appendix 11 V2 |
+| `configs/shield-oc-2025-v3.json` | SHIELD-OC-2025 | Appendix 11 V3 |
+| `configs/samples/shield-cc-2025-v2-package.json` | Sample multi-CSV package | — |
+
+Example:
+
+```bash
+npm run check:cli -- \
+  --file ./configs/samples/shield-cc-2025-v2-package.json \
+  --config ./configs/shield-cc-2025-v2.json \
+  --dataset-id SHIELD-CC-2025-refresh-01 \
+  --study-id SHIELD-CC-2025 \
+  --source-site local-lab \
+  --license internal \
+  --provenance curated-export \
+  --format md --out shield-cc-report.md --gate-exit
+```
+
+Multi-table packages can be supplied as a JSON map of `tableName → CSV text`, or as individual CSV files validated against the matching entity `table` name.
 
 ---
 

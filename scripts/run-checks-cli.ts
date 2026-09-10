@@ -6,7 +6,9 @@
  *   npm run check:cli -- --file ./data.json
  *   npm run check:cli -- --file ./a.json --file ./b.json --format md --out report.md
  *   npm run check:cli -- --dir ./datasets --config ./configs/fhir-lab-v1.yaml --gate-exit
- *   npm run check:cli -- --file ./data.json --dataset-id CAD-001 --source-site local-lab --mode local
+ *   npm run check:cli -- --file ./configs/samples/shield-cc-2025-v2-package.json \
+ *     --config ./configs/shield-cc-2025-v2.json --dataset-id SHIELD-CC-2025-refresh-01 \
+ *     --study-id SHIELD-CC-2025 --source-site local-lab --license internal --provenance curated-export
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
@@ -31,13 +33,15 @@ function printHelp(): void {
   console.log(`Usage: check:cli [options]
 
 Input:
-  --file <path>          Dataset file (.json / .ndjson / .txt). Repeatable.
-  --dir <path>           Validate all .json/.ndjson/.txt files in a directory.
+  --file <path>          Dataset file (.json / .ndjson / .txt / .csv). Repeatable.
+  --dir <path>           Validate all supported files in a directory.
   (stdin)                Used when no --file/--dir is given.
 
 Config / context:
   --config <path>        Validation config (.json / .yaml / .csv). Default: built-in fhir-lab-v1.
   --dataset-id <id>      Dataset identifier (default: file name or stdin-dataset).
+  --study-id <id>        Study id (e.g. SHIELD-CC-2025 / SHIELD-OC-2025).
+  --dictionary-ref <t>   Dictionary / appendix reference for the run.
   --source-site <site>   Source / site (default: local).
   --mode <mode>          local | batch | interactive (default: batch).
   --timeframe <text>     Optional timeframe label.
@@ -72,6 +76,8 @@ async function main(): Promise<void> {
   const timeframe = argValue(args, '--timeframe');
   const license = argValue(args, '--license');
   const provenance = argValue(args, '--provenance');
+  const studyId = argValue(args, '--study-id');
+  const dictionaryRef = argValue(args, '--dictionary-ref');
   const gateExit = hasFlag(args, '--gate-exit');
   const failOnWarn = hasFlag(args, '--fail-on-warn');
 
@@ -95,6 +101,8 @@ async function main(): Promise<void> {
         timeframe,
         license,
         provenance,
+        studyId: studyId ?? config.studyId,
+        dictionaryRef: dictionaryRef ?? config.dictionaryRef,
         inputFiles: [],
         schemaVersion: config.version
       }
@@ -117,6 +125,8 @@ async function main(): Promise<void> {
         timeframe,
         license,
         provenance,
+        studyId: studyId ?? config.studyId,
+        dictionaryRef: dictionaryRef ?? config.dictionaryRef,
         inputFiles: [filePath],
         schemaVersion: config.version
       }

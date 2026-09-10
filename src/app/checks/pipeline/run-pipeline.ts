@@ -1,5 +1,12 @@
 /**
- * Orchestrates differentiated DCC check suites for runDataCurationCheck.
+ * Orchestrates differentiated DCC check suites for `runDataCurationCheck` (FHIR path).
+ *
+ * Suites are enabled from the validation config's `plugins` list plus a set of
+ * core defaults. Each suite returns issues that are later aggregated into the
+ * quality-gate report (PASS/FAIL) by `buildDccRunReport`.
+ *
+ * Tabular / SHIELD dictionary validation does not use this FHIR pipeline —
+ * see `pipeline/tabular-dictionary.ts` instead.
  */
 
 import type { Observation, DiagnosticReport } from '../../models/fhir.types';

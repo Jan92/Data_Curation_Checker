@@ -11,6 +11,9 @@ import {
   DEFAULT_FHIR_LAB_CONFIG,
   TOOL_VERSION,
   BUILTIN_PLUGINS,
+  DCC_PRESETS,
+  findPreset,
+  fetchTextAsset,
   type CheckResult,
   type CheckIssue,
   type CheckStatus,
@@ -19,13 +22,21 @@ import {
   type ValidationMode,
   type ValidationConfig,
   type RecordValidationResult,
-  type EffectiveConfigRef
+  type EffectiveConfigRef,
+  type DccPreset
 } from './checks';
 
+/** Result panel tabs. */
 type ResultTab = 'summary' | 'checks' | 'issues' | 'records';
+
+/** Issue list severity filter. */
 type IssueFilter = 'all' | 'error' | 'warn';
 
+/** localStorage key for last-used run context fields. */
 const CONTEXT_STORAGE_KEY = 'dcc-run-context-v1';
+
+/** Maximum upload size for CAD / config files in the browser. */
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 @Component({
   standalone: true,
@@ -35,7 +46,13 @@ const CONTEXT_STORAGE_KEY = 'dcc-run-context-v1';
   styleUrls: ['./app.component.css']
 })
 /**
- * Data Curation Checker — on-premise quality gate for curated/annotated datasets.
+ * Browser UI for the Data Curation Checker.
+ *
+ * Runs entirely client-side (no upload to a remote server). Operators can:
+ * - pick a built-in FHIR or SHIELD dictionary preset (loaded from site assets)
+ * - upload their own config / dataset
+ * - run the same `runDataCurationCheck` engine used by the CLI
+ * - export JSON / Markdown / HTML reports
  */
 export class AppComponent {
   @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
@@ -44,11 +61,17 @@ export class AppComponent {
   readonly title = 'Data Curation Checker';
   readonly toolVersion = TOOL_VERSION;
   readonly builtinPluginCount = BUILTIN_PLUGINS.length;
+  /** Presets available from the hosted website (FHIR + SHIELD dictionaries). */
+  readonly presets: DccPreset[] = DCC_PRESETS;
 
-  /** Active validation config (default or user-uploaded). */
+  /** Active validation config (built-in, preset, or user-uploaded). */
   activeConfig: ValidationConfig = DEFAULT_FHIR_LAB_CONFIG;
   configSourceLabel = 'Built-in fhir-lab-v1';
   configLoadError: string | null = null;
+  /** Currently selected preset id in the dropdown. */
+  selectedPresetId = 'fhir-lab-v1';
+  /** True while a preset/sample asset is being fetched. */
+  isLoadingPreset = false;
 
   inputText = '';
   selectedFile: File | null = null;
@@ -60,10 +83,12 @@ export class AppComponent {
   isLoading = false;
   validationError: string | null = null;
 
-  /** Dataset / run context (D1.6) */
+  /** Dataset / run context — persisted locally for convenience. */
   datasetId = '';
   sourceSite = '';
   timeframe = '';
+  studyId = '';
+  dictionaryRef = '';
   runMode: ValidationMode = 'interactive';
   licenseField = '';
   provenance = '';
@@ -74,50 +99,245 @@ export class AppComponent {
   resultTab: ResultTab = 'summary';
   issueFilter: IssueFilter = 'all';
 
+  /** Collapsible how-to guide (open by default for first-time clarity). */
+  guideOpen = true;
+
+  /** Public GitHub repository for CLI, configs, and source. */
+  readonly repoUrl = 'https://github.com/Jan92/Data_Curation_Checker';
+
   constructor() {
     this.restoreRunContext();
+    try {
+      const stored = localStorage.getItem('dcc-guide-open');
+      if (stored === '0') this.guideOpen = false;
+      else if (stored === '1') this.guideOpen = true;
+      else if (typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches) {
+        // First visit on phone: keep the fold short; guide stays one tap away.
+        this.guideOpen = false;
+      }
+    } catch {
+      /* ignore */
+    }
   }
 
+  /** Toggle the on-page how-to guide and remember preference. */
+  toggleGuide(): void {
+    this.guideOpen = !this.guideOpen;
+    try {
+      localStorage.setItem('dcc-guide-open', this.guideOpen ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /**
+   * Download a hosted website asset (config or sample) to the user's machine.
+   * Paths are resolved against the app base href (local + GitHub Pages).
+   */
+  async downloadWebsiteAsset(relativePath: string): Promise<void> {
+    this.validationError = null;
+    try {
+      const text = await fetchTextAsset(relativePath);
+      const name = relativePath.split('/').pop() || 'download.txt';
+      const type = name.endsWith('.json')
+        ? 'application/json'
+        : name.endsWith('.yaml') || name.endsWith('.yml')
+          ? 'text/yaml'
+          : name.endsWith('.csv')
+            ? 'text/csv'
+            : 'text/plain';
+      this.downloadBlob(text, name, type);
+    } catch (error) {
+      this.validationError =
+        error instanceof Error ? error.message : 'Could not download asset.';
+    }
+  }
+
+  /** Download the config file for the currently selected preset (if any). */
+  async downloadSelectedPresetConfig(): Promise<void> {
+    const path = this.selectedPreset?.configPath;
+    if (!path) {
+      this.validationError = 'Built-in FHIR config is embedded — use Reset / Export from a run, or download fhir-lab-v1.json below.';
+      return;
+    }
+    await this.downloadWebsiteAsset(path);
+  }
+
+  /** Download the sample package for the currently selected preset (if any). */
+  async downloadSelectedPresetSample(): Promise<void> {
+    const path = this.selectedPreset?.samplePath;
+    if (!path) {
+      this.downloadSampleFile();
+      return;
+    }
+    await this.downloadWebsiteAsset(path);
+  }
+
+  /** Effective hashed config snapshot for the active config. */
   get effectiveConfig(): EffectiveConfigRef {
     return resolveEffectiveConfig(this.activeConfig);
   }
 
-  /**
-   * Checks if there is any input available (file or text)
-   */
+  /** True when file or paste area has content. */
   get hasInput(): boolean {
     return Boolean(this.selectedFile || this.inputText.trim());
   }
 
-  /**
-   * Checks if validation is currently running
-   */
+  /** True while validation or preset loading is in progress. */
   get isProcessing(): boolean {
-    return this.isLoading;
+    return this.isLoading || this.isLoadingPreset;
+  }
+
+  get selectedPreset(): DccPreset | undefined {
+    return findPreset(this.selectedPresetId);
+  }
+
+  get recordResults(): RecordValidationResult[] {
+    return this.lastRunReport?.recordResults ?? [];
+  }
+
+  get enabledSuiteCount(): number {
+    return this.lastRunReport?.checkSuites?.filter((s) => s.enabled).length ?? 0;
+  }
+
+  get violationCodeEntries(): Array<[string, number]> {
+    return Object.entries(this.lastRunReport?.summary.violationsByCode ?? {});
+  }
+
+  get violationFieldEntries(): Array<[string, number]> {
+    return Object.entries(this.lastRunReport?.summary.violationsByField ?? {});
+  }
+
+  get hasViolationAggregates(): boolean {
+    return this.violationCodeEntries.length > 0 || this.violationFieldEntries.length > 0;
+  }
+
+  get sortedIssues(): CheckIssue[] {
+    const severityOrder: Record<CheckStatus, number> = { error: 0, warn: 1, ok: 2 };
+    return [...this.issues].sort((a, b) => {
+      const orderA = severityOrder[a.severity] ?? 99;
+      const orderB = severityOrder[b.severity] ?? 99;
+      return orderA - orderB;
+    });
+  }
+
+  get filteredIssues(): CheckIssue[] {
+    if (this.issueFilter === 'all') return this.sortedIssues;
+    return this.sortedIssues.filter((i) => i.severity === this.issueFilter);
   }
 
   /**
-   * Handles file selection from the file input
+   * Apply the selected website preset: load config (+ optional sample) and
+   * fill run-context defaults so the quality gate can be run immediately.
    */
+  async applySelectedPreset(options: { loadSample?: boolean; runAfter?: boolean } = {}): Promise<void> {
+    const preset = this.selectedPreset;
+    if (!preset) return;
+
+    this.isLoadingPreset = true;
+    this.configLoadError = null;
+    this.validationError = null;
+
+    try {
+      if (preset.configPath) {
+        const text = await fetchTextAsset(preset.configPath);
+        const parsed = parseConfigFromText(text, preset.configPath.split('/').pop() || 'config.json');
+        const report = validateValidationConfig(parsed);
+        if (!report.ok) {
+          throw new Error(report.issues.map((i) => `${i.path}: ${i.message}`).join('; '));
+        }
+        resolveEffectiveConfig(parsed);
+        this.activeConfig = parsed;
+        this.configSourceLabel = preset.configPath;
+      } else {
+        this.activeConfig = DEFAULT_FHIR_LAB_CONFIG;
+        this.configSourceLabel = 'Built-in fhir-lab-v1';
+      }
+
+      this.applyPresetDefaults(preset);
+
+      if (options.loadSample) {
+        await this.loadPresetSample(preset);
+      } else {
+        this.clearResults();
+      }
+
+      if (options.runAfter && this.hasInput) {
+        await this.runCheck();
+      }
+    } catch (error) {
+      this.configLoadError =
+        error instanceof Error ? error.message : 'Could not load preset from website assets.';
+    } finally {
+      this.isLoadingPreset = false;
+    }
+  }
+
+  /** One-click demo: preset config + sample dataset + quality gate. */
+  async runPresetDemo(): Promise<void> {
+    await this.applySelectedPreset({ loadSample: true, runAfter: true });
+  }
+
+  /** Load only the sample dataset for the current preset (keeps current config). */
+  async loadSelectedPresetSample(): Promise<void> {
+    const preset = this.selectedPreset;
+    if (!preset) return;
+    this.isLoadingPreset = true;
+    this.validationError = null;
+    try {
+      if (preset.kind === 'fhir' || !preset.samplePath) {
+        this.loadValidFhirDemo();
+      } else {
+        await this.loadPresetSample(preset);
+      }
+    } catch (error) {
+      this.validationError =
+        error instanceof Error ? error.message : 'Could not load sample dataset.';
+    } finally {
+      this.isLoadingPreset = false;
+    }
+  }
+
+  private async loadPresetSample(preset: DccPreset): Promise<void> {
+    if (!preset.samplePath) {
+      this.loadValidFhirDemo();
+      return;
+    }
+    const text = await fetchTextAsset(preset.samplePath);
+    this.clearFile();
+    this.inputText = text;
+    this.clearResults();
+    this.applyPresetDefaults(preset);
+  }
+
+  private applyPresetDefaults(preset: DccPreset): void {
+    const d = preset.defaults;
+    if (!d) return;
+    if (d.datasetId) this.datasetId = d.datasetId;
+    if (d.sourceSite) this.sourceSite = d.sourceSite;
+    if (d.studyId) this.studyId = d.studyId;
+    if (d.dictionaryRef) this.dictionaryRef = d.dictionaryRef;
+    if (d.license) this.licenseField = d.license;
+    if (d.provenance) this.provenance = d.provenance;
+  }
+
+  /** Handles CAD / dataset file selection from the upload control. */
   handleFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
-    
+
     if (file) {
-      // Validate file size (max 10MB)
-      const maxSize = 10 * 1024 * 1024; // 10MB
-      if (file.size > maxSize) {
-        this.validationError = `File size (${this.formatBytes(file.size)}) exceeds maximum allowed size of ${this.formatBytes(maxSize)}.`;
+      if (file.size > MAX_UPLOAD_BYTES) {
+        this.validationError = `File size (${this.formatBytes(file.size)}) exceeds maximum allowed size of ${this.formatBytes(MAX_UPLOAD_BYTES)}.`;
         input.value = '';
         return;
       }
 
-      // Validate file type
-      const validExtensions = ['.json', '.ndjson', '.txt'];
+      const validExtensions = ['.json', '.ndjson', '.txt', '.csv'];
       const fileName = file.name.toLowerCase();
-      const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
-      
-      if (!hasValidExtension && !file.type.includes('json') && !file.type.includes('text')) {
+      const hasValidExtension = validExtensions.some((ext) => fileName.endsWith(ext));
+
+      if (!hasValidExtension && !file.type.includes('json') && !file.type.includes('text') && !file.type.includes('csv')) {
         this.validationError = `File type not supported. Please use ${validExtensions.join(', ')} files.`;
         input.value = '';
         return;
@@ -131,9 +351,6 @@ export class AppComponent {
     this.clearResults();
   }
 
-  /**
-   * Clears the selected file and resets file-related state
-   */
   clearFile(): void {
     this.selectedFile = null;
     this.selectedFileName = '';
@@ -145,9 +362,6 @@ export class AppComponent {
     this.clearResults();
   }
 
-  /**
-   * Clears validation results and issues
-   */
   clearResults(): void {
     if (!this.isLoading) {
       this.checkResults = [];
@@ -160,9 +374,7 @@ export class AppComponent {
     }
   }
 
-  /**
-   * Load a custom YAML/JSON validation config (D1.6 config-driven gate).
-   */
+  /** Load a custom YAML/JSON/CSV validation config from disk. */
   async handleConfigSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -176,10 +388,12 @@ export class AppComponent {
       if (!report.ok) {
         throw new Error(report.issues.map((i) => `${i.path}: ${i.message}`).join('; '));
       }
-      // Ensure hash resolves
       resolveEffectiveConfig(parsed);
       this.activeConfig = parsed;
       this.configSourceLabel = file.name;
+      this.selectedPresetId = '';
+      if (parsed.studyId) this.studyId = parsed.studyId;
+      if (parsed.dictionaryRef) this.dictionaryRef = parsed.dictionaryRef;
       this.clearResults();
     } catch (error) {
       this.configLoadError =
@@ -192,6 +406,7 @@ export class AppComponent {
     this.activeConfig = DEFAULT_FHIR_LAB_CONFIG;
     this.configSourceLabel = 'Built-in fhir-lab-v1';
     this.configLoadError = null;
+    this.selectedPresetId = 'fhir-lab-v1';
     if (this.configInput?.nativeElement) {
       this.configInput.nativeElement.value = '';
     }
@@ -210,9 +425,7 @@ export class AppComponent {
     this.issueFilter = filter;
   }
 
-  /**
-   * Loads a small, mostly-valid example into the textarea (fewer issues than the downloadable sample file)
-   */
+  /** Loads a small FHIR example into the paste area (FHIR demo only). */
   loadExampleData(): void {
     this.clearFile();
     const exampleData = this.generateLoadExampleData();
@@ -221,8 +434,16 @@ export class AppComponent {
   }
 
   /**
-   * Downloads a generated sample JSON file (Observations and DiagnosticReport) for upload and analysis
+   * Deterministic valid FHIR sample for preset demos / one-click runs
+   * (avoids random FAIL from deliberate-issue variants).
    */
+  private loadValidFhirDemo(): void {
+    this.clearFile();
+    this.inputText = JSON.stringify(this.generateLoadExampleVariant1(), null, 2);
+    this.clearResults();
+  }
+
+  /** Downloads a generated FHIR sample with deliberate issues. */
   downloadSampleFile(): void {
     const data = this.generateExampleData();
     const json = JSON.stringify(data, null, 2);
@@ -870,6 +1091,11 @@ export class AppComponent {
   /**
    * Runs the DCC quality-gate check on the input data
    */
+  /**
+   * Run the shared quality-gate engine on the current file or paste buffer.
+   * Uses the active config (built-in, website preset, or uploaded) and persists
+   * run-context fields to localStorage for the next session.
+   */
   async runCheck(): Promise<void> {
     if (!this.hasInput) {
       this.clearResults();
@@ -905,6 +1131,8 @@ export class AppComponent {
           inputFiles: this.selectedFileName ? [this.selectedFileName] : [],
           license: this.licenseField.trim() || undefined,
           provenance: this.provenance.trim() || undefined,
+          studyId: this.studyId.trim() || this.activeConfig.studyId,
+          dictionaryRef: this.dictionaryRef.trim() || this.activeConfig.dictionaryRef,
           schemaVersion: this.effectiveConfig.version
         }
       });
@@ -917,6 +1145,10 @@ export class AppComponent {
       this.resultTab = 'summary';
       this.issueFilter = 'all';
       this.persistRunContext();
+      // On mobile, bring the gate outcome into view after validation.
+      queueMicrotask(() => {
+        document.getElementById('gate-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } catch (error) {
       this.handleValidationError(error);
     } finally {
@@ -1022,6 +1254,8 @@ export class AppComponent {
           datasetId: this.datasetId,
           sourceSite: this.sourceSite,
           timeframe: this.timeframe,
+          studyId: this.studyId,
+          dictionaryRef: this.dictionaryRef,
           runMode: this.runMode,
           licenseField: this.licenseField,
           provenance: this.provenance
@@ -1040,6 +1274,8 @@ export class AppComponent {
         datasetId: string;
         sourceSite: string;
         timeframe: string;
+        studyId: string;
+        dictionaryRef: string;
         runMode: ValidationMode;
         licenseField: string;
         provenance: string;
@@ -1047,6 +1283,8 @@ export class AppComponent {
       this.datasetId = data.datasetId ?? '';
       this.sourceSite = data.sourceSite ?? '';
       this.timeframe = data.timeframe ?? '';
+      this.studyId = data.studyId ?? '';
+      this.dictionaryRef = data.dictionaryRef ?? '';
       this.runMode = data.runMode ?? 'interactive';
       this.licenseField = data.licenseField ?? '';
       this.provenance = data.provenance ?? '';
@@ -1078,31 +1316,6 @@ export class AppComponent {
    */
   getWarnCount(): number {
     return this.issues.filter((i) => i.severity === 'warn').length;
-  }
-
-  /**
-   * Get issues sorted by severity (errors first, then warnings, then ok)
-   */
-  get sortedIssues(): CheckIssue[] {
-    const severityOrder: Record<CheckStatus, number> = { error: 0, warn: 1, ok: 2 };
-    return [...this.issues].sort((a, b) => {
-      const orderA = severityOrder[a.severity] ?? 99;
-      const orderB = severityOrder[b.severity] ?? 99;
-      return orderA - orderB;
-    });
-  }
-
-  get filteredIssues(): CheckIssue[] {
-    if (this.issueFilter === 'all') return this.sortedIssues;
-    return this.sortedIssues.filter((i) => i.severity === this.issueFilter);
-  }
-
-  get recordResults(): RecordValidationResult[] {
-    return this.lastRunReport?.recordResults ?? [];
-  }
-
-  get enabledSuiteCount(): number {
-    return this.lastRunReport?.checkSuites?.filter((s) => s.enabled).length ?? 0;
   }
 
   /**

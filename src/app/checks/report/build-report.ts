@@ -11,7 +11,16 @@ import type {
   RecordValidationResult
 } from '../config/types';
 
-export const TOOL_VERSION = '0.4.0';
+export const TOOL_VERSION = '0.6.0';
+
+export interface SummaryExtras {
+  rowCount?: number;
+  tableCounts?: Record<string, number>;
+  missingFiles?: string[];
+  unexpectedFiles?: string[];
+  missingColumns?: string[];
+  unexpectedColumns?: string[];
+}
 
 export interface DccRunReport {
   gate: GateStatus;
@@ -47,22 +56,42 @@ function inferResourceType(location: string): string {
   return 'Unknown';
 }
 
-/** Record-level findings: one entry per issue (violation), with stable recordId. */
+/** Record-level findings: row/resource, status, violation code, field, raw value, severity. */
 export function buildRecordResults(issues: CheckIssue[]): RecordValidationResult[] {
-  return issues.map((issue, index) => {
-    const resourceType = inferResourceType(issue.location);
-    const status =
-      issue.severity === 'error' ? 'fail' : issue.severity === 'warn' ? 'warn' : 'pass';
-    return {
-      recordId: `${issue.location}#${index + 1}`,
-      resourceType,
-      status,
-      violationCode: issue.label.replace(/\s+/g, '_').toUpperCase(),
-      field: issue.label,
-      message: issue.detail,
-      severity: issue.severity === 'ok' ? 'info' : issue.severity
-    };
-  });
+  return issues
+    .filter((i) => i.severity === 'error' || i.severity === 'warn')
+    .map((issueItem, index) => {
+      const resourceType = inferResourceType(issueItem.location);
+      const status =
+        issueItem.severity === 'error' ? 'fail' : issueItem.severity === 'warn' ? 'warn' : 'pass';
+      return {
+        recordId: issueItem.location || `record#${index + 1}`,
+        resourceType,
+        status,
+        violationCode:
+          issueItem.code ?? issueItem.label.replace(/\s+/g, '_').toUpperCase(),
+        field: issueItem.field ?? issueItem.label,
+        rawValue: issueItem.rawValue,
+        message: issueItem.detail,
+        severity: issueItem.severity === 'ok' ? 'info' : issueItem.severity
+      };
+    });
+}
+
+function aggregateViolations(issues: CheckIssue[]): {
+  violationsByField: Record<string, number>;
+  violationsByCode: Record<string, number>;
+} {
+  const violationsByField: Record<string, number> = {};
+  const violationsByCode: Record<string, number> = {};
+  for (const i of issues) {
+    if (i.severity !== 'error' && i.severity !== 'warn') continue;
+    const field = i.field || i.label || 'unknown';
+    const code = i.code || i.label.replace(/\s+/g, '_').toUpperCase();
+    violationsByField[field] = (violationsByField[field] ?? 0) + 1;
+    violationsByCode[code] = (violationsByCode[code] ?? 0) + 1;
+  }
+  return { violationsByField, violationsByCode };
 }
 
 function resourceKeysFromParse(parseResult: ParseResult): string[] {
@@ -78,71 +107,95 @@ function resourceKeysFromParse(parseResult: ParseResult): string[] {
   return keys;
 }
 
+function recordKeysFromIssues(issues: CheckIssue[]): string[] {
+  const keys = new Set<string>();
+  for (const i of issues) {
+    if (!i.location) continue;
+    if (i.location.includes('/row/')) keys.add(i.location.split(' · ')[0]);
+    else if (i.location.startsWith('Observation') || i.location.startsWith('DiagnosticReport')) {
+      keys.add(i.location.split(' · ')[0]);
+    }
+  }
+  return [...keys];
+}
+
 export function buildSummary(
   parseResult: ParseResult,
   issues: CheckIssue[],
   laboratoryCount: number,
   toolVersion: string,
-  config: EffectiveConfigRef
+  config: EffectiveConfigRef,
+  runContext?: DatasetRunContext,
+  extras?: SummaryExtras
 ): DatasetSummary {
   const errorCount = issues.filter((i) => i.severity === 'error').length;
   const warnCount = issues.filter((i) => i.severity === 'warn').length;
   const observationCount = parseResult.resources?.length ?? 0;
   const diagnosticReportCount = parseResult.diagnosticReports?.length ?? 0;
   const resourceKeys = resourceKeysFromParse(parseResult);
+  const tabularKeys = extras?.rowCount ? recordKeysFromIssues(issues) : [];
+  const keys = resourceKeys.length ? resourceKeys : tabularKeys;
 
   let failCount = 0;
   let warnRecordCount = 0;
   let passCount = 0;
-  for (const key of resourceKeys) {
-    const related = issues.filter(
-      (i) => i.location === key || i.location.startsWith(key + ' ') || i.location.startsWith(key + '·') || i.location.startsWith(key + ' ·')
+  for (const key of keys) {
+    const scoped = issues.filter(
+      (i) =>
+        i.location === key ||
+        i.location.startsWith(key + ' ') ||
+        i.location.startsWith(key + '·') ||
+        i.location.startsWith(key + ' ·') ||
+        i.location.startsWith(key + '/')
     );
-    // Also match "Observation 1" style locations from legacy checks
-    const altRelated =
-      related.length > 0
-        ? related
-        : issues.filter((i) => {
-            const base = key.split('/')[0];
-            return i.location.startsWith(base);
-          });
-    // Prefer exact id match when possible
-    const scoped = issues.filter((i) => {
-      if (i.location === key) return true;
-      const [type, id] = key.split('/');
-      return (
-        i.location.includes(`${type}/${id}`) ||
-        i.location === `${type} ${id}` ||
-        (i.location.startsWith(`${type} `) && i.location.includes(id))
-      );
-    });
-    const bucket = scoped.length ? scoped : altRelated.length && resourceKeys.length === 1 ? altRelated : scoped;
-    if (bucket.some((i) => i.severity === 'error')) failCount += 1;
-    else if (bucket.some((i) => i.severity === 'warn')) warnRecordCount += 1;
+    if (scoped.some((i) => i.severity === 'error')) failCount += 1;
+    else if (scoped.some((i) => i.severity === 'warn')) warnRecordCount += 1;
     else passCount += 1;
   }
 
-  // If we could not attribute issues to resources, fall back to totals.
-  if (!resourceKeys.length) {
+  const fhirRowCount = observationCount + diagnosticReportCount;
+  const rowCount = extras?.rowCount ?? fhirRowCount;
+
+  if (!keys.length && rowCount > 0) {
+    // Attribute at dataset grain when we only know totals
+    failCount = errorCount > 0 ? Math.min(rowCount, errorCount) : 0;
+    warnRecordCount = errorCount === 0 && warnCount > 0 ? Math.min(rowCount, warnCount) : 0;
+    passCount = Math.max(0, rowCount - failCount - warnRecordCount);
+  } else if (!keys.length) {
     failCount = errorCount > 0 ? 1 : 0;
     warnRecordCount = errorCount === 0 && warnCount > 0 ? 1 : 0;
     passCount = errorCount === 0 && warnCount === 0 ? 0 : passCount;
   }
 
+  const { violationsByField, violationsByCode } = aggregateViolations(issues);
+
   return {
+    rowCount,
     observationCount,
     diagnosticReportCount,
     laboratoryCount,
+    tableCounts: extras?.tableCounts ?? {
+      ...(observationCount ? { Observation: observationCount } : {}),
+      ...(diagnosticReportCount ? { DiagnosticReport: diagnosticReportCount } : {})
+    },
     errorCount,
     warnCount,
     passCount,
     failCount,
     warnRecordCount,
     violationCount: errorCount + warnCount,
+    violationsByField,
+    violationsByCode,
+    missingFiles: extras?.missingFiles ?? [],
+    unexpectedFiles: extras?.unexpectedFiles ?? [],
+    missingColumns: extras?.missingColumns ?? [],
+    unexpectedColumns: extras?.unexpectedColumns ?? [],
     timestamp: new Date().toISOString(),
     toolVersion,
     configVersion: config.version,
-    configHash: config.hash
+    configHash: config.hash,
+    studyId: runContext?.studyId ?? config.snapshot.studyId,
+    dictionaryRef: runContext?.dictionaryRef ?? config.snapshot.dictionaryRef
   };
 }
 
@@ -155,6 +208,7 @@ export function buildDccRunReport(input: {
   runContext: DatasetRunContext;
   toolVersion?: string;
   checkSuites?: import('../types').CheckSuiteResult[];
+  summaryExtras?: SummaryExtras;
 }): DccRunReport {
   const toolVersion = input.toolVersion ?? TOOL_VERSION;
   const gate = decideGate(input.issues, {
@@ -171,7 +225,9 @@ export function buildDccRunReport(input: {
       input.issues,
       input.laboratoryCount,
       toolVersion,
-      input.config
+      input.config,
+      input.runContext,
+      input.summaryExtras
     ),
     parseResult: input.parseResult,
     issues: input.issues,
@@ -200,6 +256,8 @@ export function formatReportAsMarkdown(report: DccRunReport): string {
   }
   if (report.runContext.license) lines.push(`- License: ${report.runContext.license}`);
   if (report.runContext.provenance) lines.push(`- Provenance: ${report.runContext.provenance}`);
+  if (report.summary.studyId) lines.push(`- Study: \`${report.summary.studyId}\``);
+  if (report.summary.dictionaryRef) lines.push(`- Dictionary: ${report.summary.dictionaryRef}`);
   lines.push('');
   lines.push(`## Validation configuration`);
   lines.push(`- ID: \`${report.config.id}\``);
@@ -211,6 +269,7 @@ export function formatReportAsMarkdown(report: DccRunReport): string {
   lines.push(`## Summary`);
   lines.push(`| Metric | Value |`);
   lines.push(`|--------|-------|`);
+  lines.push(`| Row / record count | ${report.summary.rowCount} |`);
   lines.push(`| Observations | ${report.summary.observationCount} |`);
   lines.push(`| DiagnosticReports | ${report.summary.diagnosticReportCount} |`);
   lines.push(`| Laboratory observations | ${report.summary.laboratoryCount} |`);
@@ -220,7 +279,30 @@ export function formatReportAsMarkdown(report: DccRunReport): string {
   lines.push(`| Errors | ${report.summary.errorCount} |`);
   lines.push(`| Warnings | ${report.summary.warnCount} |`);
   lines.push(`| Violations | ${report.summary.violationCount} |`);
+  lines.push(`| Config version | ${report.summary.configVersion} |`);
+  lines.push(`| Config hash | ${report.summary.configHash} |`);
+  lines.push(`| Tool version | ${report.summary.toolVersion} |`);
+  if (report.summary.missingFiles.length) {
+    lines.push(`| Missing files | ${report.summary.missingFiles.join(', ')} |`);
+  }
+  if (report.summary.missingColumns.length) {
+    lines.push(`| Missing columns | ${report.summary.missingColumns.join(', ')} |`);
+  }
   lines.push('');
+  if (Object.keys(report.summary.violationsByCode).length) {
+    lines.push(`### Violations by code`);
+    for (const [code, n] of Object.entries(report.summary.violationsByCode)) {
+      lines.push(`- \`${code}\`: ${n}`);
+    }
+    lines.push('');
+  }
+  if (Object.keys(report.summary.violationsByField).length) {
+    lines.push(`### Violations by field`);
+    for (const [field, n] of Object.entries(report.summary.violationsByField)) {
+      lines.push(`- \`${field}\`: ${n}`);
+    }
+    lines.push('');
+  }
   if (report.checkSuites?.length) {
     lines.push(`## Check suites`);
     lines.push(`| Suite | Status | Errors | Warnings | Detail |`);

@@ -3,16 +3,42 @@
  * Pure TypeScript – no Angular. Use from UI, Node, or CLI.
  */
 
-import type { CheckResult, CheckIssue, CheckStatus, CheckCategory, CheckSuiteResult, ParseResult, ValidationReport, ValidateOptions } from './types';
-import { Observation, Bundle, DiagnosticReport } from '../models/fhir.types';
 import {
   resolveEffectiveConfig,
-  defaultRunContext
+  defaultRunContext,
+  applyMetadataRequirements
 } from './config';
-import { buildDccRunReport, type DccRunReport } from './report/build-report';
+import { buildDccRunReport, TOOL_VERSION, type DccRunReport } from './report/build-report';
 import { runCheckPipeline } from './pipeline/run-pipeline';
+import {
+  isTabularDatasetInput,
+  parseTabularDataset,
+  runTabularDictionaryChecks
+} from './pipeline/tabular-dictionary';
+import { runReproducibilityChecks } from './pipeline/reproducibility';
+import { summarizeSuite, suiteToCheckResult } from './pipeline/helpers';
+import type {
+  CheckResult,
+  CheckIssue,
+  CheckStatus,
+  CheckCategory,
+  CheckSuiteResult,
+  ParseResult,
+  ValidationReport,
+  ValidateOptions
+} from './types';
+import { Observation, Bundle, DiagnosticReport } from '../models/fhir.types';
 
-export type { CheckResult, CheckIssue, CheckStatus, CheckCategory, CheckSuiteResult, ParseResult, ValidationReport, ValidateOptions };
+export type {
+  CheckResult,
+  CheckIssue,
+  CheckStatus,
+  CheckCategory,
+  CheckSuiteResult,
+  ParseResult,
+  ValidationReport,
+  ValidateOptions
+};
 export type { DccRunReport };
 export { formatReportAsMarkdown, formatReportAsHtml, TOOL_VERSION } from './report/build-report';
 export { formatReport, normalizeReportFormat, reportFileExtension } from './io/format-report';
@@ -34,6 +60,14 @@ export {
 } from './config';
 export { BUILTIN_PLUGINS, BUILTIN_PLUGIN_IDS } from './plugins/registry';
 export { runCheckPipeline } from './pipeline/run-pipeline';
+export {
+  isTabularDatasetInput,
+  parseTabularDataset,
+  runTabularDictionaryChecks
+} from './pipeline/tabular-dictionary';
+export { DCC_PRESETS, findPreset } from './presets/catalog';
+export type { DccPreset, PresetKind } from './presets/catalog';
+export { fetchTextAsset } from './presets/load-asset';
 export type {
   DatasetRunContext,
   ValidationConfig,
@@ -41,7 +75,8 @@ export type {
   ValidationMode,
   EffectiveConfigRef,
   RecordValidationResult,
-  AliasMapping
+  AliasMapping,
+  CrossFileReference
 } from './config';
 
 export class FhirObservationChecker {
@@ -3110,17 +3145,25 @@ export function validateFhirObservations(content: string, options?: ValidateOpti
 }
 
 /**
- * Full DCC run: differentiated check-suite pipeline + gate + record-level results.
+ * Full DCC quality-gate entry point (shared by Angular UI and Node CLI).
+ *
+ * Routing:
+ * 1. If the active config looks study/CSV-oriented and the payload is CSV or a
+ *    multi-CSV JSON package → tabular dictionary suites.
+ * 2. Otherwise → FHIR Observation / DiagnosticReport parse + check pipeline.
+ *
+ * Always returns a `DccRunReport` with gate status, suite breakdown, and
+ * record-level findings suitable for audit export (JSON / MD / HTML).
  */
 export function runDataCurationCheck(content: string, options?: ValidateOptions): DccRunReport {
-  const checker = new FhirObservationChecker();
-  const base = checker.validate(content, options);
   const config = resolveEffectiveConfig(options?.config);
   const source = options?.source ?? 'Input';
   const sourceDetail = options?.sourceDetail;
   const runContext = defaultRunContext({
     ...options?.runContext,
     schemaVersion: options?.runContext?.schemaVersion ?? config.version,
+    studyId: options?.runContext?.studyId ?? config.snapshot.studyId,
+    dictionaryRef: options?.runContext?.dictionaryRef ?? config.snapshot.dictionaryRef,
     inputFiles:
       options?.runContext?.inputFiles?.length
         ? options.runContext.inputFiles
@@ -3128,6 +3171,167 @@ export function runDataCurationCheck(content: string, options?: ValidateOptions)
           ? [sourceDetail]
           : []
   });
+
+  // Dictionary-driven tabular / study dataset path
+  if (isTabularDatasetInput(content, config.snapshot)) {
+    const { parse, issues: parseIssues } = parseTabularDataset(
+      content,
+      config.snapshot,
+      sourceDetail
+    );
+    const emptyParse: ParseResult = {
+      ok: parse.ok,
+      type: parse.type,
+      resources: [],
+      diagnosticReports: [],
+      error: parse.error
+    };
+
+    if (!parse.ok) {
+      const issues = [
+        ...parseIssues,
+        {
+          severity: 'error' as const,
+          label: 'Tabular parse failed',
+          detail: parse.error ?? 'Unable to parse study dataset.',
+          location: source,
+          code: 'TABULAR_PARSE_FAILED',
+          category: 'ingest' as const,
+          suiteId: 'ingest'
+        }
+      ];
+      return buildDccRunReport({
+        parseResult: emptyParse,
+        issues,
+        checkResults: [
+          {
+            label: 'Ingest & parse',
+            status: 'error',
+            statusLabel: 'Error',
+            detail: parse.error ?? 'Tabular parse failed.',
+            suiteId: 'ingest',
+            category: 'ingest'
+          }
+        ],
+        laboratoryCount: 0,
+        config,
+        runContext,
+        checkSuites: [],
+        summaryExtras: {
+          rowCount: 0,
+          tableCounts: {},
+          missingFiles: [],
+          unexpectedFiles: [],
+          missingColumns: [],
+          unexpectedColumns: []
+        }
+      });
+    }
+
+    const tabular = runTabularDictionaryChecks(config.snapshot, parse.tables, runContext.inputFiles);
+    const metaIssues = applyMetadataRequirements(config.snapshot, runContext);
+    const reproIssues = runReproducibilityChecks({
+      config,
+      runContext,
+      toolVersion: TOOL_VERSION
+    });
+    const allIssues = [...parseIssues, ...tabular.issues, ...metaIssues, ...reproIssues];
+
+    const suites = [
+      summarizeSuite({
+        id: 'ingest',
+        label: 'Ingest & parse',
+        description: 'Parse CSV / multi-table study package.',
+        category: 'ingest',
+        enabled: true,
+        issues: parseIssues
+      }),
+      summarizeSuite({
+        id: 'tabular-dictionary',
+        label: 'Dictionary / tabular rules',
+        description: 'Tables, columns, types, required values, patterns, aliases.',
+        category: 'structure',
+        enabled: true,
+        issues: tabular.issues.filter((i) => i.suiteId === 'tabular-dictionary' || !i.suiteId)
+      }),
+      summarizeSuite({
+        id: 'primary-keys',
+        label: 'Primary keys',
+        description: 'Primary-key uniqueness within tables.',
+        category: 'identifier',
+        enabled: true,
+        issues: tabular.issues.filter((i) => i.suiteId === 'primary-keys')
+      }),
+      summarizeSuite({
+        id: 'cross-references',
+        label: 'Cross-file references',
+        description: 'Referential integrity across dictionary tables.',
+        category: 'reference',
+        enabled: true,
+        issues: tabular.issues.filter((i) => i.suiteId === 'cross-references')
+      }),
+      summarizeSuite({
+        id: 'expected-files',
+        label: 'Expected files',
+        description: 'Expected file set vs provided package.',
+        category: 'dataset',
+        enabled: true,
+        issues: tabular.issues.filter((i) => i.suiteId === 'expected-files')
+      }),
+      summarizeSuite({
+        id: 'metadata-requirements',
+        label: 'Run metadata',
+        description: 'datasetId, source/site, license, provenance, schema/tool version.',
+        category: 'metadata',
+        enabled: true,
+        issues: metaIssues
+      }),
+      summarizeSuite({
+        id: 'reproducibility',
+        label: 'Reproducibility',
+        description: 'Config hash/version and tool version for audit evidence.',
+        category: 'reproducibility',
+        enabled: true,
+        issues: reproIssues
+      })
+    ];
+
+    const checkResults = [
+      {
+        label: 'Source',
+        status: 'ok' as const,
+        statusLabel: 'OK',
+        detail: `${source} detected${sourceDetail ? `: ${sourceDetail}` : ''} (${parse.type}).`,
+        suiteId: 'ingest',
+        category: 'ingest' as const
+      },
+      {
+        label: 'Study / dictionary',
+        status: 'ok' as const,
+        statusLabel: 'OK',
+        detail: `${runContext.studyId ?? config.snapshot.studyId ?? 'n/a'} · ${
+          runContext.dictionaryRef ?? config.snapshot.dictionaryRef ?? config.snapshot.name
+        }`,
+        category: 'policy' as const
+      },
+      ...suites.map(suiteToCheckResult)
+    ];
+
+    return buildDccRunReport({
+      parseResult: emptyParse,
+      issues: allIssues,
+      checkResults,
+      laboratoryCount: 0,
+      config,
+      runContext,
+      checkSuites: suites,
+      summaryExtras: tabular.extras
+    });
+  }
+
+  // FHIR Observation / DiagnosticReport path
+  const checker = new FhirObservationChecker();
+  const base = checker.validate(content, options);
 
   const { suites, issues, checkResults } = runCheckPipeline({
     base,

@@ -25,7 +25,10 @@ export {
   BUILTIN_PLUGINS,
   BUILTIN_PLUGIN_IDS,
   TOOL_VERSION,
-  runCheckPipeline
+  runCheckPipeline,
+  DCC_PRESETS,
+  findPreset,
+  fetchTextAsset
 } from './fhir-observation-checks';
 
 export type {
@@ -44,5 +47,8 @@ export type {
   ValidationMode,
   EffectiveConfigRef,
   RecordValidationResult,
-  AliasMapping
+  AliasMapping,
+  CrossFileReference,
+  DccPreset,
+  PresetKind
 } from './fhir-observation-checks';

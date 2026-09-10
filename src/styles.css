@@ -2,14 +2,20 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
   background:
-    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(12, 74, 110, 0.08), transparent 50%),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(14, 116, 144, 0.06), transparent 45%),
-    #eef2f6;
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(12, 74, 110, 0.09), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(14, 116, 144, 0.07), transparent 45%),
+    linear-gradient(180deg, #eef2f6 0%, #e8eef4 100%);
   color: #0f172a;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 button,
@@ -17,4 +23,14 @@ input,
 textarea,
 select {
   font-family: inherit;
+}
+
+a {
+  color: #0c4a6e;
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
 }

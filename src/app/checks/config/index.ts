@@ -41,6 +41,8 @@ export function defaultRunContext(partial?: Partial<DatasetRunContext>): Dataset
     inputFiles: partial?.inputFiles ?? [],
     license: partial?.license,
     provenance: partial?.provenance,
-    schemaVersion: partial?.schemaVersion
+    schemaVersion: partial?.schemaVersion,
+    studyId: partial?.studyId,
+    dictionaryRef: partial?.dictionaryRef
   };
 }

@@ -1,15 +1,29 @@
 <div class="page">
   <header class="app-header">
-    <div>
-      <h1>Data Curation Checker</h1>
+    <div class="brand-block">
+      <p class="brand-kicker">Data Curation Checker <span class="version-pill">v{{ toolVersion }}</span></p>
+      <h1>Quality gate for curated datasets</h1>
       <p class="subtitle">
-        On-premise quality gate for curated and annotated research datasets.
-        Validates FHIR Observation and DiagnosticReport resources against a versioned
-        syntactic configuration before platform upload.
+        Validate FHIR laboratory resources or SHIELD study packages entirely in your browser.
+        Same engine as the CLI — nothing is uploaded to a server.
       </p>
+      <div class="header-actions">
+        <button
+          class="ghost"
+          type="button"
+          (click)="toggleGuide()"
+          [attr.aria-expanded]="guideOpen"
+          aria-controls="how-to-guide"
+        >
+          {{ guideOpen ? 'Hide guide' : 'Show guide' }}
+        </button>
+        <a class="ghost ghost-link" [href]="repoUrl" target="_blank" rel="noopener noreferrer">
+          GitHub / CLI
+        </a>
+      </div>
     </div>
     <button
-      class="primary"
+      class="primary desktop-run"
       type="button"
       (click)="runCheck()"
       [disabled]="!hasInput || isProcessing"
@@ -19,7 +33,7 @@
       <span *ngIf="!isProcessing">Run quality gate</span>
       <span *ngIf="isProcessing" class="loading-text">
         <span class="spinner" aria-hidden="true"></span>
-        Validating...
+        Validating…
       </span>
     </button>
   </header>
@@ -31,28 +45,120 @@
     <span class="workflow-arrow" aria-hidden="true">→</span>
     <span class="workflow-step active">3. DCC quality gate</span>
     <span class="workflow-arrow" aria-hidden="true">→</span>
-    <span class="workflow-step">4. Platform uploader</span>
+    <span class="workflow-step">4. Transfer / upload</span>
   </nav>
+
+  <section
+    class="guide-panel"
+    id="how-to-guide"
+    *ngIf="guideOpen"
+    aria-label="How to use this website"
+  >
+    <div class="guide-intro">
+      <h2>How this website works</h2>
+      <p>
+        Pick a preset (or upload your own config), load a dataset, run the gate, then export the report.
+        Processing stays on this device.
+      </p>
+    </div>
+
+    <ol class="guide-steps">
+      <li>
+        <strong>Choose a validation config</strong>
+        <span>Use a website preset (FHIR or SHIELD) or upload JSON / YAML / CSV.</span>
+      </li>
+      <li>
+        <strong>Load your dataset</strong>
+        <span>Upload a file, paste JSON/CSV package text, or load a built-in sample.</span>
+      </li>
+      <li>
+        <strong>Fill run context</strong>
+        <span>Dataset ID and source/site are stored with the audit report.</span>
+      </li>
+      <li>
+        <strong>Run &amp; export</strong>
+        <span>PASS / FAIL plus JSON, Markdown, HTML, or Print / PDF.</span>
+      </li>
+    </ol>
+
+    <div class="guide-downloads">
+      <h3>Downloads</h3>
+      <p class="guide-downloads-lead">
+        Download configs and sample packages to inspect offline, share with data providers, or run via CLI.
+      </p>
+      <div class="download-grid">
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/fhir-lab-v1.json')" [disabled]="isProcessing">
+          <strong>FHIR Lab config</strong>
+          <span>fhir-lab-v1.json</span>
+        </button>
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/shield-cc-2025-v2.json')" [disabled]="isProcessing">
+          <strong>SHIELD-CC V2 config</strong>
+          <span>shield-cc-2025-v2.json</span>
+        </button>
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/samples/shield-cc-2025-v2-package.json')" [disabled]="isProcessing">
+          <strong>SHIELD-CC V2 sample</strong>
+          <span>multi-CSV package JSON</span>
+        </button>
+        <button type="button" class="download-card" (click)="downloadSelectedPresetConfig()" [disabled]="isProcessing">
+          <strong>Current preset config</strong>
+          <span>{{ selectedPreset?.configPath || 'built-in / see FHIR Lab' }}</span>
+        </button>
+        <button type="button" class="download-card" (click)="downloadSelectedPresetSample()" [disabled]="isProcessing">
+          <strong>Current preset sample</strong>
+          <span>{{ selectedPreset?.samplePath || 'generated FHIR sample' }}</span>
+        </button>
+        <button type="button" class="download-card" (click)="downloadSampleFile()" [disabled]="isProcessing">
+          <strong>FHIR sample (issues)</strong>
+          <span>deliberate errors for demos</span>
+        </button>
+      </div>
+      <p class="guide-repo">
+        Full repository (CLI, all configs, source):
+        <a [href]="repoUrl" target="_blank" rel="noopener noreferrer">{{ repoUrl }}</a>
+      </p>
+    </div>
+
+    <div class="guide-quick">
+      <button
+        class="secondary"
+        type="button"
+        (click)="runPresetDemo()"
+        [disabled]="isProcessing || !selectedPresetId"
+        aria-label="Load preset sample and run quality gate"
+      >
+        Try one-click demo
+      </button>
+      <span class="guide-quick-hint">Uses the preset selected below — recommended first run.</span>
+    </div>
+  </section>
 
   <main class="grid">
     <section class="panel">
       <h2>Dataset &amp; run context</h2>
       <p class="panel-lead">
-        Metadata persisted with each validation run for auditability (dataset ID, source/site, mode, config version).
+        Metadata stored with each validation run for auditability.
       </p>
 
       <div class="context-grid">
         <label class="field">
           <span>Dataset ID</span>
-          <input type="text" [(ngModel)]="datasetId" [disabled]="isProcessing" placeholder="e.g. CAD-001" />
+          <input type="text" [(ngModel)]="datasetId" [disabled]="isProcessing" placeholder="e.g. SHIELD-CC-2025-refresh-01" autocomplete="off" />
         </label>
         <label class="field">
           <span>Source / site</span>
-          <input type="text" [(ngModel)]="sourceSite" [disabled]="isProcessing" placeholder="e.g. local-lab / site-01" />
+          <input type="text" [(ngModel)]="sourceSite" [disabled]="isProcessing" placeholder="e.g. local-lab / site-01" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Study ID</span>
+          <input type="text" [(ngModel)]="studyId" [disabled]="isProcessing" placeholder="e.g. SHIELD-CC-2025" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Dictionary ref</span>
+          <input type="text" [(ngModel)]="dictionaryRef" [disabled]="isProcessing" placeholder="e.g. Appendix 10 V2" autocomplete="off" />
         </label>
         <label class="field">
           <span>Timeframe</span>
-          <input type="text" [(ngModel)]="timeframe" [disabled]="isProcessing" placeholder="e.g. 2024-01 … 2024-12" />
+          <input type="text" [(ngModel)]="timeframe" [disabled]="isProcessing" placeholder="e.g. 2024-01 … 2024-12" autocomplete="off" />
         </label>
         <label class="field">
           <span>Mode</span>
@@ -64,11 +170,11 @@
         </label>
         <label class="field">
           <span>License</span>
-          <input type="text" [(ngModel)]="licenseField" [disabled]="isProcessing" placeholder="optional" />
+          <input type="text" [(ngModel)]="licenseField" [disabled]="isProcessing" placeholder="optional" autocomplete="off" />
         </label>
         <label class="field">
           <span>Provenance</span>
-          <input type="text" [(ngModel)]="provenance" [disabled]="isProcessing" placeholder="optional" />
+          <input type="text" [(ngModel)]="provenance" [disabled]="isProcessing" placeholder="optional" autocomplete="off" />
         </label>
       </div>
 
@@ -82,9 +188,49 @@
           <div><dt>Plugins</dt><dd>{{ effectiveConfig.snapshot.plugins.length || builtinPluginCount }}</dd></div>
         </dl>
         <p class="config-name">{{ effectiveConfig.snapshot.name }} · {{ configSourceLabel }}</p>
-        <div class="config-actions">
+
+        <label class="field preset-field">
+          <span>Website preset</span>
+          <select
+            [(ngModel)]="selectedPresetId"
+            (ngModelChange)="applySelectedPreset()"
+            [disabled]="isProcessing"
+            aria-label="Select validation preset"
+          >
+            <option value="" disabled>Select a preset…</option>
+            <option *ngFor="let p of presets" [value]="p.id">{{ p.label }}</option>
+          </select>
+          <small class="field-hint" *ngIf="selectedPreset">{{ selectedPreset.description }}</small>
+        </label>
+
+        <div class="config-actions preset-actions">
+          <button
+            class="secondary"
+            type="button"
+            (click)="runPresetDemo()"
+            [disabled]="isProcessing || !selectedPresetId"
+            aria-label="Load preset sample and run quality gate"
+          >
+            Run preset demo
+          </button>
+          <button
+            class="link"
+            type="button"
+            (click)="loadSelectedPresetSample()"
+            [disabled]="isProcessing || !selectedPresetId"
+          >
+            Load sample only
+          </button>
+          <button
+            class="link"
+            type="button"
+            (click)="downloadSelectedPresetConfig()"
+            [disabled]="isProcessing"
+          >
+            Download config
+          </button>
           <label class="config-upload">
-            <span>Load config (JSON / YAML / CSV)</span>
+            <span>Or upload config (JSON / YAML / CSV)</span>
             <input
               #configInput
               type="file"
@@ -107,17 +253,9 @@
       </div>
 
       <h2>Data source</h2>
-
-      <div class="info-box">
-        <h3>Supported input formats</h3>
-        <ul class="format-list">
-          <li><strong>JSON Bundle:</strong> FHIR Bundle with Observation and/or DiagnosticReport in <code>entry[].resource</code></li>
-          <li><strong>JSON Array:</strong> Array of Observation and/or DiagnosticReport resources</li>
-          <li><strong>Single JSON:</strong> Single Observation or DiagnosticReport</li>
-          <li><strong>NDJSON:</strong> One resource per line</li>
-          <li><strong>File extensions:</strong> .json, .ndjson, .txt (max 10MB)</li>
-        </ul>
-      </div>
+      <p class="panel-lead">
+        FHIR JSON / NDJSON, study package JSON (multi-CSV map), or a single CSV — max 10&nbsp;MB.
+      </p>
 
       <div class="panel-block">
         <label class="field">
@@ -125,23 +263,14 @@
           <input
             #fileInput
             type="file"
-            accept=".json,.ndjson,.txt,application/json,text/plain"
+            accept=".json,.ndjson,.txt,.csv,application/json,text/plain,text/csv"
             (change)="handleFileSelected($event)"
             [disabled]="isProcessing"
             aria-describedby="file-hint"
             aria-label="Upload curated annotated dataset file"
           />
-          <small id="file-hint" class="field-hint">Curated &amp; annotated dataset (CAD) for DCC validation — local processing only</small>
+          <small id="file-hint" class="field-hint">Processed locally in this browser only</small>
         </label>
-        <button
-          class="link"
-          type="button"
-          (click)="downloadSampleFile()"
-          [disabled]="isProcessing"
-          aria-label="Download sample JSON file for upload and analysis"
-        >
-          Download Sample file
-        </button>
         <div class="file-meta" *ngIf="selectedFileName">
           <div>
             <strong>{{ selectedFileName }}</strong>
@@ -154,59 +283,49 @@
       <div class="divider">or</div>
 
       <label class="field">
-        <span>Paste FHIR data (Observation and/or DiagnosticReport)</span>
+        <span>Paste data</span>
         <textarea
-          rows="10"
+          rows="8"
           [(ngModel)]="inputText"
           [disabled]="isProcessing"
           (input)="clearResults()"
-          placeholder="Paste FHIR Bundle, array, single resource, or NDJSON…"
+          placeholder="Paste FHIR Bundle/array/resource/NDJSON, or a SHIELD multi-CSV package JSON…"
           aria-describedby="textarea-hint"
-          aria-label="Paste FHIR Observation or DiagnosticReport data"
+          aria-label="Paste dataset for validation"
         ></textarea>
-        <small id="textarea-hint" class="field-hint">Supports Observation, DiagnosticReport, Bundle, array, or NDJSON.</small>
+        <small id="textarea-hint" class="field-hint">FHIR Observation/DiagnosticReport, or SHIELD package with CSV table contents.</small>
       </label>
 
       <div class="demo-section">
         <button
           class="demo-button"
           type="button"
+          (click)="loadSelectedPresetSample()"
+          [disabled]="isProcessing"
+          aria-label="Load sample for the selected preset"
+        >
+          Load preset sample
+        </button>
+        <button
+          class="demo-button secondary-demo"
+          type="button"
           (click)="loadExampleData()"
           [disabled]="isProcessing"
-          aria-label="Load example FHIR data for demonstration"
+          aria-label="Load random FHIR example data"
         >
-          Load example data
+          Load FHIR example
         </button>
         <p class="demo-hint">
-          <strong>Try it out!</strong> Randomly loads one of 3 small examples.
-          Use <strong>Download Sample file</strong> for a comprehensive set with deliberate issues.
+          Fastest path: open the guide and tap <strong>Try one-click demo</strong>, or use <strong>Run preset demo</strong> above.
         </p>
       </div>
 
-      <div class="info-box">
-        <h3>What the DCC checks</h3>
-        <div class="validation-list">
-          <div class="validation-item">
-            <strong>Syntactic / structural only:</strong> Required fields, formats, references — no clinical interpretation
-          </div>
-          <div class="validation-item">
-            <strong>Observation &amp; DiagnosticReport:</strong> status, code, category, subject, effective/issued, performer, result
-          </div>
-          <div class="validation-item">
-            <strong>Laboratory:</strong> LOINC, UCUM, reference ranges, critical values, workflow structure
-          </div>
-          <div class="validation-item">
-            <strong>Gate outcome:</strong> PASS → ready for Platform Uploader · FAIL → notify data provider with discrepancies
-          </div>
-        </div>
-      </div>
-
       <p class="privacy-note">
-        Privacy: local / on-premise processing, data minimisation, outputs limited to technical findings.
+        Privacy: processing stays in your browser. Outputs are limited to technical findings.
       </p>
     </section>
 
-    <section class="panel">
+    <section class="panel results-panel" id="gate-results">
       <h2>Quality gate result</h2>
 
       <div
@@ -218,7 +337,7 @@
       >
         <span class="status-dot" [attr.aria-hidden]="true"></span>
         <span *ngIf="isProcessing">Validating dataset…</span>
-        <span *ngIf="!isProcessing">{{ hasInput ? 'Ready to run quality gate' : 'Add a file or paste FHIR data.' }}</span>
+        <span *ngIf="!isProcessing">{{ hasInput ? 'Ready to run quality gate' : 'Add a file, paste data, or run a website preset demo.' }}</span>
       </div>
 
       <div *ngIf="validationError" class="error-banner" role="alert">
@@ -235,7 +354,7 @@
       >
         <span class="gate-label">Quality gate</span>
         <strong class="gate-value">{{ gate }}</strong>
-        <p *ngIf="gate === 'PASS'">Dataset may proceed to the Platform Data Uploader.</p>
+        <p *ngIf="gate === 'PASS'">Dataset may proceed to transfer / platform upload.</p>
         <p *ngIf="gate === 'FAIL'">Dataset rejected — notify the data provider with the issues below.</p>
       </div>
 
@@ -247,26 +366,26 @@
       </div>
 
       <div class="info-box" *ngIf="!checkResults.length">
-        <h3>Validation capabilities</h3>
+        <h3>What you will see here</h3>
         <div class="capability-grid">
           <div class="capability-item">
-            <strong>Versioned config</strong>
-            <span>YAML/JSON schemas with hash &amp; snapshot per run</span>
+            <strong>Gate status</strong>
+            <span>PASS or FAIL with config hash for audit</span>
           </div>
           <div class="capability-item">
-            <strong>Observation</strong>
-            <span>Status, code, value/dataAbsentReason, concepts, references</span>
+            <strong>Check suites</strong>
+            <span>FHIR laboratory or SHIELD dictionary rules</span>
           </div>
           <div class="capability-item">
-            <strong>DiagnosticReport</strong>
-            <span>Status, code, category, subject, effective/issued, result</span>
+            <strong>Issues &amp; records</strong>
+            <span>Filterable findings for the data provider</span>
           </div>
           <div class="capability-item">
-            <strong>Reports</strong>
-            <span>JSON, Markdown, HTML (print to PDF)</span>
+            <strong>Exports</strong>
+            <span>JSON, Markdown, HTML, Print → PDF</span>
           </div>
         </div>
-        <p class="placeholder empty-hint">No check run yet. Click “Run quality gate”.</p>
+        <p class="placeholder empty-hint">No check run yet. Use the guide demo or click “Run quality gate”.</p>
       </div>
 
       <ng-container *ngIf="checkResults.length">
@@ -318,16 +437,16 @@
         <div class="tab-panel" *ngIf="resultTab === 'summary'" role="tabpanel">
           <div class="metrics-grid" *ngIf="lastRunReport; else summaryFallback">
             <div class="metric">
-              <strong>{{ lastRunReport.summary.observationCount }}</strong>
-              <span>Observations</span>
+              <strong>{{ lastRunReport.summary.rowCount }}</strong>
+              <span>Rows / records</span>
             </div>
             <div class="metric">
-              <strong>{{ lastRunReport.summary.diagnosticReportCount }}</strong>
-              <span>DiagnosticReports</span>
+              <strong>{{ lastRunReport.summary.passCount }}</strong>
+              <span>Pass</span>
             </div>
-            <div class="metric">
-              <strong>{{ lastRunReport.summary.laboratoryCount }}</strong>
-              <span>Laboratory</span>
+            <div class="metric metric-error">
+              <strong>{{ lastRunReport.summary.failCount }}</strong>
+              <span>Fail</span>
             </div>
             <div class="metric metric-error">
               <strong>{{ lastRunReport.summary.errorCount }}</strong>
@@ -350,6 +469,18 @@
               <dt>Dataset</dt>
               <dd class="mono">{{ lastRunReport.runContext.datasetId }}</dd>
             </div>
+            <div *ngIf="lastRunReport.summary.studyId">
+              <dt>Study</dt>
+              <dd class="mono">{{ lastRunReport.summary.studyId }}</dd>
+            </div>
+            <div *ngIf="lastRunReport.summary.dictionaryRef">
+              <dt>Dictionary</dt>
+              <dd>{{ lastRunReport.summary.dictionaryRef }}</dd>
+            </div>
+            <div>
+              <dt>Config</dt>
+              <dd class="mono">{{ lastRunReport.config.id }}@{{ lastRunReport.summary.configVersion }}</dd>
+            </div>
             <div>
               <dt>Config hash</dt>
               <dd class="mono">{{ lastRunReport.config.hash }}</dd>
@@ -358,7 +489,29 @@
               <dt>Timestamp</dt>
               <dd class="mono">{{ lastRunReport.summary.timestamp }}</dd>
             </div>
+            <div *ngIf="lastRunReport.summary.missingFiles?.length">
+              <dt>Missing files</dt>
+              <dd>{{ lastRunReport.summary.missingFiles.join(', ') }}</dd>
+            </div>
+            <div *ngIf="lastRunReport.summary.missingColumns?.length">
+              <dt>Missing columns</dt>
+              <dd>{{ lastRunReport.summary.missingColumns.join(', ') }}</dd>
+            </div>
           </dl>
+          <div class="violation-blocks" *ngIf="hasViolationAggregates">
+            <div *ngIf="violationCodeEntries.length">
+              <h3>Violations by code</h3>
+              <ul>
+                <li *ngFor="let entry of violationCodeEntries"><code>{{ entry[0] }}</code> — {{ entry[1] }}</li>
+              </ul>
+            </div>
+            <div *ngIf="violationFieldEntries.length">
+              <h3>Violations by field</h3>
+              <ul>
+                <li *ngFor="let entry of violationFieldEntries"><code>{{ entry[0] }}</code> — {{ entry[1] }}</li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div class="tab-panel" *ngIf="resultTab === 'checks'" role="tabpanel">
@@ -457,4 +610,28 @@
       </ng-container>
     </section>
   </main>
+
+  <footer class="app-footer">
+    <p>
+      Data Curation Checker v{{ toolVersion }} · client-side only ·
+      <a [href]="repoUrl" target="_blank" rel="noopener noreferrer">source &amp; CLI on GitHub</a>
+    </p>
+  </footer>
+
+  <div class="mobile-run-bar" role="region" aria-label="Run quality gate">
+    <button
+      class="primary"
+      type="button"
+      (click)="runCheck()"
+      [disabled]="!hasInput || isProcessing"
+      [attr.aria-busy]="isProcessing"
+      aria-label="Run Data Curation Checker quality gate"
+    >
+      <span *ngIf="!isProcessing">Run quality gate</span>
+      <span *ngIf="isProcessing" class="loading-text">
+        <span class="spinner" aria-hidden="true"></span>
+        Validating…
+      </span>
+    </button>
+  </div>
 </div>

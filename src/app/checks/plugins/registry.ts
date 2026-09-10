@@ -95,6 +95,11 @@ export const BUILTIN_PLUGINS: BuiltinPlugin[] = [
     category: 'dataset'
   },
   {
+    id: 'tabular-dictionary',
+    description: 'Dictionary-driven tabular/CSV validation (study datasets)',
+    category: 'structure'
+  },
+  {
     id: 'reproducibility',
     description: 'Config hash, tool version, deterministic run metadata',
     category: 'reproducibility'

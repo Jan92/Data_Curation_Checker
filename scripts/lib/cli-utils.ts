@@ -48,7 +48,7 @@ export function collectInputFiles(fileArgs: string[], dirArg?: string): string[]
       const full = join(dir, name);
       if (!statSync(full).isFile()) continue;
       const ext = extname(name).toLowerCase();
-      if (['.json', '.ndjson', '.txt'].includes(ext)) {
+      if (['.json', '.ndjson', '.txt', '.csv'].includes(ext)) {
         files.push(full);
       }
     }

@@ -1,0 +1,93 @@
+{
+  "id": "shield-oc-2025-v2",
+  "version": "2.0.0",
+  "name": "SHIELD-OC-2025 data dictionary V2",
+  "description": "Declarative syntactic validation configuration for SHIELD-OC-2025 study datasets, derived from data dictionary V2 (Appendix 11). Used to re-verify curation/QA rules at each data refresh before de-identification and transfer to UTH.",
+  "studyId": "SHIELD-OC-2025",
+  "dictionaryRef": "Appendix 11 — SHIELD-OC-2025 data dictionary V2",
+  "formats": ["csv", "tabular"],
+  "expectedFiles": ["demographics.csv", "diagnosis.csv", "treatment.csv", "followup.csv"],
+  "entities": [
+    {
+      "name": "demographics",
+      "table": "demographics.csv",
+      "primaryKeys": ["patient_id"],
+      "requiredFields": ["patient_id", "sex", "birth_year"],
+      "optionalFields": ["site_id", "enrollment_date", "race", "ethnicity"],
+      "fields": [
+        { "name": "patient_id", "required": true, "dataType": "string", "regex": "^OC-[0-9]{6}$", "severity": "error" },
+        { "name": "sex", "required": true, "dataType": "code", "allowableValues": ["female", "male", "other", "unknown"], "severity": "error" },
+        { "name": "birth_year", "required": true, "dataType": "integer", "regex": "^(19|20)\\d{2}$", "severity": "error" },
+        { "name": "site_id", "required": false, "dataType": "string", "severity": "warn" },
+        { "name": "enrollment_date", "required": false, "dataType": "date", "dateTimePattern": "YYYY-MM-DD", "severity": "error" },
+        { "name": "race", "required": false, "dataType": "code", "severity": "warn" },
+        { "name": "ethnicity", "required": false, "dataType": "code", "severity": "warn" }
+      ]
+    },
+    {
+      "name": "diagnosis",
+      "table": "diagnosis.csv",
+      "primaryKeys": ["patient_id", "diagnosis_id"],
+      "requiredFields": ["patient_id", "diagnosis_id", "diagnosis_date", "histology"],
+      "optionalFields": ["stage", "grade"],
+      "fields": [
+        { "name": "patient_id", "required": true, "dataType": "string", "regex": "^OC-[0-9]{6}$", "severity": "error" },
+        { "name": "diagnosis_id", "required": true, "dataType": "string", "severity": "error" },
+        { "name": "diagnosis_date", "required": true, "dataType": "date", "dateTimePattern": "YYYY-MM-DD", "severity": "error" },
+        { "name": "histology", "required": true, "dataType": "code", "allowableValues": ["high-grade-serous", "low-grade-serous", "endometrioid", "clear-cell", "mucinous", "other", "unknown"], "severity": "error" },
+        { "name": "stage", "required": false, "dataType": "code", "allowableValues": ["I", "IA", "IB", "IC", "II", "IIA", "IIB", "IIC", "III", "IIIA", "IIIB", "IIIC", "IV", "IVA", "IVB", "unknown"], "severity": "warn" },
+        { "name": "grade", "required": false, "dataType": "code", "allowableValues": ["G1", "G2", "G3", "GX", "unknown"], "severity": "warn" }
+      ]
+    },
+    {
+      "name": "treatment",
+      "table": "treatment.csv",
+      "primaryKeys": ["patient_id", "treatment_id"],
+      "requiredFields": ["patient_id", "treatment_id", "treatment_type", "start_date"],
+      "optionalFields": ["end_date", "response"],
+      "fields": [
+        { "name": "patient_id", "required": true, "dataType": "string", "regex": "^OC-[0-9]{6}$", "severity": "error" },
+        { "name": "treatment_id", "required": true, "dataType": "string", "severity": "error" },
+        { "name": "treatment_type", "required": true, "dataType": "code", "allowableValues": ["surgery", "chemotherapy", "radiotherapy", "targeted", "immunotherapy", "other"], "severity": "error" },
+        { "name": "start_date", "required": true, "dataType": "date", "dateTimePattern": "YYYY-MM-DD", "severity": "error" },
+        { "name": "end_date", "required": false, "dataType": "date", "dateTimePattern": "YYYY-MM-DD", "severity": "warn" },
+        { "name": "response", "required": false, "dataType": "code", "allowableValues": ["CR", "PR", "SD", "PD", "unknown"], "severity": "warn" }
+      ]
+    },
+    {
+      "name": "followup",
+      "table": "followup.csv",
+      "primaryKeys": ["patient_id", "followup_id"],
+      "requiredFields": ["patient_id", "followup_id", "followup_date", "vital_status"],
+      "optionalFields": ["progression", "last_contact_date"],
+      "fields": [
+        { "name": "patient_id", "required": true, "dataType": "string", "regex": "^OC-[0-9]{6}$", "severity": "error" },
+        { "name": "followup_id", "required": true, "dataType": "string", "severity": "error" },
+        { "name": "followup_date", "required": true, "dataType": "date", "dateTimePattern": "YYYY-MM-DD", "severity": "error" },
+        { "name": "vital_status", "required": true, "dataType": "code", "allowableValues": ["alive", "dead", "unknown"], "severity": "error" },
+        { "name": "progression", "required": false, "dataType": "code", "allowableValues": ["yes", "no", "unknown"], "severity": "warn" },
+        { "name": "last_contact_date", "required": false, "dataType": "date", "dateTimePattern": "YYYY-MM-DD", "severity": "warn" }
+      ]
+    }
+  ],
+  "crossFileReferences": [
+    { "fromEntity": "diagnosis", "fromField": "patient_id", "toEntity": "demographics", "toField": "patient_id", "severity": "error" },
+    { "fromEntity": "treatment", "fromField": "patient_id", "toEntity": "demographics", "toField": "patient_id", "severity": "error" },
+    { "fromEntity": "followup", "fromField": "patient_id", "toEntity": "demographics", "toField": "patient_id", "severity": "error" }
+  ],
+  "aliases": [
+    { "from": "pat_id", "to": "patient_id", "severity": "warn" },
+    { "from": "gender", "to": "sex", "entity": "demographics", "severity": "warn" }
+  ],
+  "metadataRequirements": ["datasetId", "sourceSite", "schemaVersion", "toolVersion", "license", "provenance"],
+  "plugins": [
+    "tabular-dictionary",
+    "primary-keys",
+    "cross-references",
+    "expected-files",
+    "metadata-requirements",
+    "reproducibility"
+  ],
+  "failOnError": true,
+  "failOnWarn": false
+}

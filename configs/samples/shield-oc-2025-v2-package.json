@@ -1,0 +1,6 @@
+{
+  "demographics.csv": "patient_id,sex,birth_year,site_id,enrollment_date\nOC-000001,female,1972,SITE-01,2024-05-01\nOC-000002,female,1968,SITE-03,2024-06-18\n",
+  "diagnosis.csv": "patient_id,diagnosis_id,diagnosis_date,histology,stage,grade\nOC-000001,DX-1,2024-04-10,high-grade-serous,IIIC,G3\nOC-000002,DX-2,2024-05-22,endometrioid,IIA,G2\n",
+  "treatment.csv": "patient_id,treatment_id,treatment_type,start_date,end_date,response\nOC-000001,TX-1,surgery,2024-05-15,2024-05-15,CR\nOC-000002,TX-2,chemotherapy,2024-06-01,2024-08-01,PR\n",
+  "followup.csv": "patient_id,followup_id,followup_date,vital_status,progression,last_contact_date\nOC-000001,FU-1,2025-01-20,alive,no,2025-01-20\nOC-000002,FU-2,2025-02-10,alive,unknown,2025-02-10\n"
+}
