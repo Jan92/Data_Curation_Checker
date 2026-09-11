@@ -3,7 +3,7 @@
  */
 
 import type { CheckIssue } from '../types';
-import { issue } from './helpers';
+import { fieldPresent, issue, OBSERVATION_VALUE_KEYS, resourceLocation } from './helpers';
 
 const OBS_RECOMMENDED = [
   'subject',
@@ -23,15 +23,6 @@ const DR_RECOMMENDED = [
   'result'
 ] as const;
 
-function present(resource: Record<string, unknown>, field: string): boolean {
-  const value = resource[field];
-  if (value === undefined || value === null) return false;
-  if (typeof value === 'string') return value.trim().length > 0;
-  if (Array.isArray(value)) return value.length > 0;
-  if (typeof value === 'object') return Object.keys(value as object).length > 0;
-  return true;
-}
-
 export function runCompletenessChecks(
   resources: Array<Record<string, unknown>>,
   resourceType: 'Observation' | 'DiagnosticReport'
@@ -46,9 +37,8 @@ export function runCompletenessChecks(
   const missingByField: Record<string, number> = {};
 
   resources.forEach((resource, index) => {
-    const id = typeof resource['id'] === 'string' ? resource['id'] : String(index + 1);
-    const location = `${resourceType}/${id}`;
-    const missing = recommended.filter((f: string) => !present(resource, f));
+    const location = resourceLocation(resource, resourceType, index);
+    const missing = recommended.filter((f: string) => !fieldPresent(resource, f));
     missing.forEach((f) => {
       missingByField[f] = (missingByField[f] ?? 0) + 1;
       missingTotal += 1;
@@ -65,24 +55,9 @@ export function runCompletenessChecks(
       );
     });
 
-    // value vs dataAbsentReason completeness for Observation
     if (resourceType === 'Observation') {
-      const valueKeys = [
-        'valueQuantity',
-        'valueCodeableConcept',
-        'valueString',
-        'valueBoolean',
-        'valueInteger',
-        'valueRange',
-        'valueRatio',
-        'valueSampledData',
-        'valueTime',
-        'valueDateTime',
-        'valuePeriod',
-        'valueAttachment'
-      ];
-      const hasValue = valueKeys.some((k) => present(resource, k));
-      const hasDar = present(resource, 'dataAbsentReason');
+      const hasValue = OBSERVATION_VALUE_KEYS.some((k) => fieldPresent(resource, k));
+      const hasDar = fieldPresent(resource, 'dataAbsentReason');
       const organizer = resource['organizer'] === true;
       if (!organizer && !hasValue && !hasDar) {
         issues.push(

@@ -7,6 +7,7 @@ import * as yaml from 'js-yaml';
 import type { AliasMapping, EntityFieldRule, EntityRule, ValidationConfig } from '../config/types';
 import { DEFAULT_FHIR_LAB_CONFIG } from '../config/default-config';
 import { validateValidationConfig } from '../config/validate-config';
+import { DEFAULT_OPTIONAL_PLUGIN_IDS } from '../plugins/registry';
 
 export type ConfigSourceKind = 'json' | 'yaml' | 'csv';
 
@@ -132,21 +133,7 @@ export function parseConfigCsv(csvText: string, fileName = 'schema.csv'): Valida
     formats: ['json', 'ndjson', 'fhir-bundle', 'fhir-array', 'fhir-resource', 'csv'],
     entities: [...entityMap.values()],
     metadataRequirements: [...DEFAULT_FHIR_LAB_CONFIG.metadataRequirements],
-    plugins: [
-      'fhir-observation',
-      'fhir-diagnostic-report',
-      'laboratory-loinc',
-      'cross-references',
-      'primary-keys',
-      'datetime-formats',
-      'vocabulary',
-      'completeness',
-      'identifier-format',
-      'config-entity-rules',
-      'metadata-requirements',
-      'expected-files',
-      'reproducibility'
-    ],
+    plugins: [...DEFAULT_OPTIONAL_PLUGIN_IDS],
     aliases: aliases.length ? aliases : undefined,
     failOnError: true,
     failOnWarn: false

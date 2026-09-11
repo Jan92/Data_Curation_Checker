@@ -198,7 +198,12 @@
             aria-label="Select validation preset"
           >
             <option value="" disabled>Select a preset…</option>
-            <option *ngFor="let p of presets" [value]="p.id">{{ p.label }}</option>
+            <optgroup label="FHIR laboratory">
+              <option *ngFor="let p of fhirPresets; trackBy: trackByPreset" [value]="p.id">{{ p.label }}</option>
+            </optgroup>
+            <optgroup label="SHIELD study dictionaries">
+              <option *ngFor="let p of shieldPresets; trackBy: trackByPreset" [value]="p.id">{{ p.label }}</option>
+            </optgroup>
           </select>
           <small class="field-hint" *ngIf="selectedPreset">{{ selectedPreset.description }}</small>
         </label>
@@ -389,7 +394,7 @@
       </div>
 
       <ng-container *ngIf="checkResults.length">
-        <div class="result-tabs" role="tablist" aria-label="Result views">
+        <div class="result-tabs" role="tablist" aria-label="Result views" (keydown)="onResultTabKeydown($event)">
           <button
             type="button"
             role="tab"
@@ -542,8 +547,8 @@
             <div class="issues-header">
               <h3 id="issues-heading">Issues</h3>
               <div class="issue-stats" *ngIf="issues.length" role="status">
-                <span class="stat-item error-stat">{{ getErrorCount() }} errors</span>
-                <span class="stat-item warn-stat">{{ getWarnCount() }} warnings</span>
+                <span class="stat-item error-stat">{{ errorCount }} errors</span>
+                <span class="stat-item warn-stat">{{ warnCount }} warnings</span>
               </div>
             </div>
             <div class="filter-row" *ngIf="issues.length" role="group" aria-label="Filter issues by severity">

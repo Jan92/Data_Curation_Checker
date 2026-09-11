@@ -3,7 +3,7 @@
  */
 
 import type { CheckIssue } from '../types';
-import { issue } from './helpers';
+import { issue, resourceLocation } from './helpers';
 
 const LOINC_RE = /^\d{1,5}-\d$/;
 const FHIR_ID_RE = /^[A-Za-z0-9\-\.]{1,64}$/;
@@ -23,7 +23,7 @@ export function runIdentifierFormatChecks(
 
   resources.forEach((resource, index) => {
     const id = typeof resource['id'] === 'string' ? resource['id'] : undefined;
-    const location = `${resourceType}/${id ?? index + 1}`;
+    const location = resourceLocation(resource, resourceType, index);
 
     if (id && !FHIR_ID_RE.test(id)) {
       issues.push(

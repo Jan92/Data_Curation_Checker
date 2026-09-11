@@ -28,7 +28,6 @@ export function runCrossReferenceChecks(
 ): CheckIssue[] {
   const issues: CheckIssue[] = [];
   const obsIds = new Set(observations.map((o) => o.id).filter(Boolean) as string[]);
-  const drIds = new Set(reports.map((r) => r.id).filter(Boolean) as string[]);
 
   reports.forEach((dr, index) => {
     const location = `DiagnosticReport/${dr.id ?? index + 1}`;
@@ -169,9 +168,6 @@ export function runCrossReferenceChecks(
       }
     });
   }
-
-  // Silence unused
-  void drIds;
 
   return issues;
 }

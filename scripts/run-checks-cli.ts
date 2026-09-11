@@ -12,7 +12,7 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { resolve, basename, dirname, join } from 'path';
+import { resolve, basename, join } from 'path';
 import {
   runDataCurationCheck,
   formatReport,

@@ -10,8 +10,9 @@ import type {
   GateStatus,
   RecordValidationResult
 } from '../config/types';
+import { issueCodeFromLabel } from '../pipeline/helpers';
 
-export const TOOL_VERSION = '0.6.0';
+export const TOOL_VERSION = '0.6.1';
 
 export interface SummaryExtras {
   rowCount?: number;
@@ -69,7 +70,7 @@ export function buildRecordResults(issues: CheckIssue[]): RecordValidationResult
         resourceType,
         status,
         violationCode:
-          issueItem.code ?? issueItem.label.replace(/\s+/g, '_').toUpperCase(),
+          issueItem.code ?? issueCodeFromLabel(issueItem.label),
         field: issueItem.field ?? issueItem.label,
         rawValue: issueItem.rawValue,
         message: issueItem.detail,
@@ -87,11 +88,20 @@ function aggregateViolations(issues: CheckIssue[]): {
   for (const i of issues) {
     if (i.severity !== 'error' && i.severity !== 'warn') continue;
     const field = i.field || i.label || 'unknown';
-    const code = i.code || i.label.replace(/\s+/g, '_').toUpperCase();
+    const code = i.code || issueCodeFromLabel(i.label);
     violationsByField[field] = (violationsByField[field] ?? 0) + 1;
     violationsByCode[code] = (violationsByCode[code] ?? 0) + 1;
   }
   return { violationsByField, violationsByCode };
+}
+
+function matchRecordKey(location: string, known: Set<string>): string | undefined {
+  if (known.has(location)) return location;
+  const head = location.split(' · ')[0];
+  if (known.has(head)) return head;
+  const firstToken = location.split(' ')[0];
+  if (known.has(firstToken)) return firstToken;
+  return undefined;
 }
 
 function resourceKeysFromParse(parseResult: ParseResult): string[] {
@@ -139,18 +149,24 @@ export function buildSummary(
   let failCount = 0;
   let warnRecordCount = 0;
   let passCount = 0;
-  for (const key of keys) {
-    const scoped = issues.filter(
-      (i) =>
-        i.location === key ||
-        i.location.startsWith(key + ' ') ||
-        i.location.startsWith(key + '·') ||
-        i.location.startsWith(key + ' ·') ||
-        i.location.startsWith(key + '/')
-    );
-    if (scoped.some((i) => i.severity === 'error')) failCount += 1;
-    else if (scoped.some((i) => i.severity === 'warn')) warnRecordCount += 1;
-    else passCount += 1;
+  if (keys.length) {
+    const known = new Set(keys);
+    const flags = new Map<string, { error: boolean; warn: boolean }>();
+    for (const key of keys) flags.set(key, { error: false, warn: false });
+    for (const item of issues) {
+      if (item.severity !== 'error' && item.severity !== 'warn') continue;
+      const key = matchRecordKey(item.location, known);
+      if (!key) continue;
+      const flag = flags.get(key)!;
+      if (item.severity === 'error') flag.error = true;
+      else flag.warn = true;
+    }
+    for (const key of keys) {
+      const flag = flags.get(key)!;
+      if (flag.error) failCount += 1;
+      else if (flag.warn) warnRecordCount += 1;
+      else passCount += 1;
+    }
   }
 
   const fhirRowCount = observationCount + diagnosticReportCount;
@@ -382,6 +398,27 @@ export function formatReportAsHtml(report: DccRunReport): string {
         .join('\n')
     : `<tr><td colspan="4"><em>No record-level findings.</em></td></tr>`;
 
+  const suiteRows = report.checkSuites?.length
+    ? report.checkSuites
+        .map(
+          (s) => `<tr>
+      <td>${escapeHtml(s.label)}${s.enabled ? '' : ' (skipped)'}</td>
+      <td>${escapeHtml(s.statusLabel)}</td>
+      <td>${s.errorCount}</td>
+      <td>${s.warnCount}</td>
+      <td>${escapeHtml(s.detail)}</td>
+    </tr>`
+        )
+        .join('\n')
+    : '';
+
+  const violationCodeList = Object.entries(report.summary.violationsByCode)
+    .map(([code, n]) => `<li><code>${escapeHtml(code)}</code> — ${n}</li>`)
+    .join('');
+  const violationFieldList = Object.entries(report.summary.violationsByField)
+    .map(([field, n]) => `<li><code>${escapeHtml(field)}</code> — ${n}</li>`)
+    .join('');
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -406,6 +443,7 @@ export function formatReportAsHtml(report: DccRunReport): string {
     .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
     .card strong { display: block; font-size: 22px; }
     .card span { font-size: 12px; color: #64748b; }
+    .card ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
     footer { margin-top: 32px; font-size: 12px; color: #64748b; }
     @media print { body { padding: 12px; } .gate { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
   </style>
@@ -438,7 +476,27 @@ export function formatReportAsHtml(report: DccRunReport): string {
     <tr><th>Hash</th><td class="mono">${escapeHtml(report.config.hash)}</td></tr>
     <tr><th>Name</th><td>${escapeHtml(report.config.snapshot.name)}</td></tr>
     <tr><th>Plugins</th><td>${escapeHtml((report.config.snapshot.plugins ?? []).join(', ') || '—')}</td></tr>
+    ${report.summary.studyId ? `<tr><th>Study</th><td class="mono">${escapeHtml(report.summary.studyId)}</td></tr>` : ''}
+    ${report.summary.dictionaryRef ? `<tr><th>Dictionary</th><td>${escapeHtml(report.summary.dictionaryRef)}</td></tr>` : ''}
   </table>
+  ${
+    suiteRows
+      ? `<h2>Check suites</h2>
+  <table>
+    <thead><tr><th>Suite</th><th>Status</th><th>Errors</th><th>Warnings</th><th>Detail</th></tr></thead>
+    <tbody>${suiteRows}</tbody>
+  </table>`
+      : ''
+  }
+  ${
+    violationCodeList || violationFieldList
+      ? `<h2>Violations</h2>
+  <div class="grid">
+    ${violationCodeList ? `<div class="card"><span>By code</span><ul>${violationCodeList}</ul></div>` : ''}
+    ${violationFieldList ? `<div class="card"><span>By field</span><ul>${violationFieldList}</ul></div>` : ''}
+  </div>`
+      : ''
+  }
   <h2>Issues</h2>
   <table>
     <thead><tr><th>Severity</th><th>Label</th><th>Detail</th><th>Location</th></tr></thead>

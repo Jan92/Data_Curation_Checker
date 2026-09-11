@@ -4,13 +4,59 @@
 
 import type { CheckCategory, CheckIssue, CheckStatus, CheckSuiteResult } from '../types';
 
+/** FHIR Observation.value[x] choice types. */
+export const OBSERVATION_VALUE_KEYS = [
+  'valueQuantity',
+  'valueCodeableConcept',
+  'valueString',
+  'valueBoolean',
+  'valueInteger',
+  'valueRange',
+  'valueRatio',
+  'valueSampledData',
+  'valueTime',
+  'valueDateTime',
+  'valuePeriod',
+  'valueAttachment'
+] as const;
+
+export function issueCodeFromLabel(label: string): string {
+  return label.replace(/\s+/g, '_').toUpperCase();
+}
+
 export function issue(
   partial: Omit<CheckIssue, 'code'> & { code?: string }
 ): CheckIssue {
   return {
     ...partial,
-    code: partial.code ?? partial.label.replace(/\s+/g, '_').toUpperCase()
+    code: partial.code ?? issueCodeFromLabel(partial.label)
   };
+}
+
+export function fieldPresent(resource: Record<string, unknown>, field: string): boolean {
+  const value = resource[field];
+  if (value === undefined || value === null) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value as object).length > 0;
+  return true;
+}
+
+export function resourceLocation(
+  resource: Record<string, unknown>,
+  resourceType: string,
+  index: number
+): string {
+  const id = typeof resource['id'] === 'string' ? resource['id'] : String(index + 1);
+  return `${resourceType}/${id}`;
+}
+
+export function compileRegex(pattern: string): RegExp | null {
+  try {
+    return new RegExp(pattern);
+  } catch {
+    return null;
+  }
 }
 
 export function summarizeSuite(input: {
@@ -43,7 +89,7 @@ export function summarizeSuite(input: {
     ...i,
     suiteId: i.suiteId ?? input.id,
     category: i.category ?? input.category,
-    code: i.code ?? i.label.replace(/\s+/g, '_').toUpperCase()
+    code: i.code ?? issueCodeFromLabel(i.label)
   }));
   const errorCount = tagged.filter((i) => i.severity === 'error').length;
   const warnCount = tagged.filter((i) => i.severity === 'warn').length;

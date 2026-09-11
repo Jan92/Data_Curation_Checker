@@ -11,6 +11,7 @@ import type {
   ValidationConfig
 } from './types';
 import { TOOL_VERSION } from '../report/build-report';
+import { compileRegex, fieldPresent } from '../pipeline/helpers';
 
 function severityToStatus(severity: FieldSeverity | undefined, fallback: CheckStatus): CheckStatus {
   if (severity === 'error') return 'error';
@@ -19,14 +20,7 @@ function severityToStatus(severity: FieldSeverity | undefined, fallback: CheckSt
   return fallback;
 }
 
-function hasValue(resource: Record<string, unknown>, field: string): boolean {
-  const value = resource[field];
-  if (value === undefined || value === null) return false;
-  if (typeof value === 'string') return value.trim().length > 0;
-  if (Array.isArray(value)) return value.length > 0;
-  if (typeof value === 'object') return Object.keys(value as object).length > 0;
-  return true;
-}
+const hasValue = fieldPresent;
 
 function rawFieldValue(resource: Record<string, unknown>, field: string): string | undefined {
   const value = resource[field];
@@ -57,14 +51,10 @@ export function applyConfigEntityRules(
   if (!entity) return [];
 
   const issues: CheckIssue[] = [];
-  const plugins = new Set(config.plugins ?? []);
-  if (plugins.size && !plugins.has('config-entity-rules') && !plugins.has('fhir-observation') && !plugins.has('fhir-diagnostic-report')) {
-    // If plugins list is present and excludes entity rules / FHIR plugins, skip.
-    // Default configs include the relevant plugins.
-  }
-  if (plugins.size && !plugins.has('config-entity-rules')) {
-    // Still apply requiredFields when FHIR plugins are enabled — entity rules are part of the schema.
-  }
+  const compiledFields = (entity.fields ?? []).map((field) => ({
+    field,
+    regex: field.regex ? compileRegex(field.regex) : null
+  }));
 
   resources.forEach((resource, index) => {
     const id = typeof resource['id'] === 'string' ? resource['id'] : String(index + 1);
@@ -81,7 +71,7 @@ export function applyConfigEntityRules(
       }
     }
 
-    for (const field of entity.fields ?? []) {
+    for (const { field, regex } of compiledFields) {
       const present = hasValue(resource, field.name);
       const severity = severityToStatus(field.severity, field.required ? 'error' : 'warn');
       if (field.required && !present) {
@@ -107,20 +97,13 @@ export function applyConfigEntityRules(
           });
         }
       }
-      if (field.regex && raw) {
-        try {
-          const re = new RegExp(field.regex);
-          if (!re.test(raw)) {
-            issues.push({
-              severity,
-              label: 'Regex constraint failed',
-              detail: `${resourceType}.${field.name} does not match /${field.regex}/.`,
-              location
-            });
-          }
-        } catch {
-          /* invalid regex already rejected by config validator */
-        }
+      if (regex && raw && !regex.test(raw)) {
+        issues.push({
+          severity,
+          label: 'Regex constraint failed',
+          detail: `${resourceType}.${field.name} does not match /${field.regex}/.`,
+          location
+        });
       }
     }
 
@@ -191,10 +174,10 @@ export function applyExpectedFilesCheck(
   if (!expected.length) return [];
 
   const issues: CheckIssue[] = [];
-  const provided = new Set(inputFiles.map((f) => f.split(/[/\\]/).pop() || f));
+  const provided = [...new Set(inputFiles.map((f) => f.split(/[/\\]/).pop() || f))];
   for (const name of expected) {
     const base = name.split(/[/\\]/).pop() || name;
-    if (![...provided].some((p) => p === base || p.endsWith(base))) {
+    if (!provided.some((p) => p === base || p.endsWith(base))) {
       issues.push({
         severity: 'error',
         label: 'Missing expected file',

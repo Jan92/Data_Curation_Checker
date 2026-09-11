@@ -16,7 +16,7 @@ import {
   runTabularDictionaryChecks
 } from './pipeline/tabular-dictionary';
 import { runReproducibilityChecks } from './pipeline/reproducibility';
-import { summarizeSuite, suiteToCheckResult } from './pipeline/helpers';
+import { summarizeSuite, suiteToCheckResult, OBSERVATION_VALUE_KEYS } from './pipeline/helpers';
 import type {
   CheckResult,
   CheckIssue,
@@ -58,7 +58,7 @@ export {
   applyMetadataRequirements,
   applyExpectedFilesCheck
 } from './config';
-export { BUILTIN_PLUGINS, BUILTIN_PLUGIN_IDS } from './plugins/registry';
+export { BUILTIN_PLUGINS, BUILTIN_PLUGIN_IDS, DEFAULT_OPTIONAL_PLUGIN_IDS } from './plugins/registry';
 export { runCheckPipeline } from './pipeline/run-pipeline';
 export {
   isTabularDatasetInput,
@@ -347,7 +347,7 @@ export class FhirObservationChecker {
       },
       {
         label: 'Diagnostic reports',
-        status: diagnosticReportCount > 0 ? 'ok' : 'ok',
+        status: 'ok',
         statusLabel: 'OK',
         detail: `${diagnosticReportCount} DiagnosticReport resource(s) found.`
       },
@@ -386,21 +386,7 @@ export class FhirObservationChecker {
 
   private validateObservation(observation: Observation, location: string): CheckIssue[] {
     const issues: CheckIssue[] = [];
-    const valueKeys = [
-      'valueQuantity',
-      'valueCodeableConcept',
-      'valueString',
-      'valueBoolean',
-      'valueInteger',
-      'valueRange',
-      'valueRatio',
-      'valueSampledData',
-      'valueTime',
-      'valueDateTime',
-      'valuePeriod',
-      'valueAttachment'
-    ];
-    const hasValue = valueKeys.some((key) => (observation as any)[key] !== undefined);
+    const hasValue = OBSERVATION_VALUE_KEYS.some((key) => (observation as any)[key] !== undefined);
 
     if (!observation.status) {
       issues.push({
@@ -603,7 +589,7 @@ export class FhirObservationChecker {
           });
         }
 
-        const componentValueKeys = valueKeys.filter((key) => component?.[key] !== undefined);
+        const componentValueKeys = OBSERVATION_VALUE_KEYS.filter((key) => component?.[key] !== undefined);
         const hasComponentValue = componentValueKeys.length > 0;
 
         if (component?.dataAbsentReason && hasComponentValue) {
@@ -752,7 +738,7 @@ export class FhirObservationChecker {
     }
 
     if (hasValue) {
-      const valueType = valueKeys.find((key) => (observation as any)[key] !== undefined);
+      const valueType = OBSERVATION_VALUE_KEYS.find((key) => (observation as any)[key] !== undefined);
       if (valueType === 'valueBoolean') {
         issues.push({
           severity: 'warn',

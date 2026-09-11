@@ -108,6 +108,23 @@ export const BUILTIN_PLUGINS: BuiltinPlugin[] = [
 
 export const BUILTIN_PLUGIN_IDS = new Set(BUILTIN_PLUGINS.map((p) => p.id));
 
+/** Suites enabled by default for FHIR / CSV-imported configs (non-core). */
+export const DEFAULT_OPTIONAL_PLUGIN_IDS = [
+  'fhir-observation',
+  'fhir-diagnostic-report',
+  'laboratory-loinc',
+  'cross-references',
+  'primary-keys',
+  'datetime-formats',
+  'vocabulary',
+  'completeness',
+  'identifier-format',
+  'config-entity-rules',
+  'metadata-requirements',
+  'expected-files',
+  'reproducibility'
+] as const;
+
 export function isCorePlugin(id: string): boolean {
   return BUILTIN_PLUGINS.some((p) => p.id === id && p.core);
 }

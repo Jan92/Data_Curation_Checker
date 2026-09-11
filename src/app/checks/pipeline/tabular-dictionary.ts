@@ -19,7 +19,7 @@ import type {
   ValidationConfig
 } from '../config/types';
 import { parseCsvRows } from '../io/load-config';
-import { issue } from './helpers';
+import { compileRegex, issue } from './helpers';
 
 export interface TabularTable {
   entity: string;
@@ -44,6 +44,17 @@ const DATE_PATTERNS: Record<string, RegExp> = {
   'YYYY-MM-DDTHH:mm:ssZ': /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/,
   ISO8601: /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/
 };
+
+const patternCache = new Map<string, RegExp | null>();
+
+function resolvePattern(pattern: string): RegExp | null {
+  const known = DATE_PATTERNS[pattern];
+  if (known) return known;
+  if (patternCache.has(pattern)) return patternCache.get(pattern)!;
+  const compiled = compileRegex(pattern);
+  patternCache.set(pattern, compiled);
+  return compiled;
+}
 
 function looksLikeCsv(content: string): boolean {
   const trimmed = content.trim();
@@ -523,13 +534,7 @@ export function runTabularDictionaryChecks(
 
         const pattern = rule.regex || rule.dateTimePattern;
         if (pattern) {
-          const re = DATE_PATTERNS[pattern] ?? (() => {
-            try {
-              return new RegExp(pattern);
-            } catch {
-              return null;
-            }
-          })();
+          const re = resolvePattern(pattern);
           if (re && !re.test(value)) {
             issues.push(
               issue({

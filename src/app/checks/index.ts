@@ -24,6 +24,7 @@ export {
   applyExpectedFilesCheck,
   BUILTIN_PLUGINS,
   BUILTIN_PLUGIN_IDS,
+  DEFAULT_OPTIONAL_PLUGIN_IDS,
   TOOL_VERSION,
   runCheckPipeline,
   DCC_PRESETS,

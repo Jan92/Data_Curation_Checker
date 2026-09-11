@@ -1,4 +1,5 @@
 import type { ValidationConfig } from './types';
+import { DEFAULT_OPTIONAL_PLUGIN_IDS } from '../plugins/registry';
 
 /** Default FHIR lab validation config (demonstrator scope). */
 export const DEFAULT_FHIR_LAB_CONFIG: ValidationConfig = {
@@ -92,21 +93,7 @@ export const DEFAULT_FHIR_LAB_CONFIG: ValidationConfig = {
     'license',
     'provenance'
   ],
-  plugins: [
-    'fhir-observation',
-    'fhir-diagnostic-report',
-    'laboratory-loinc',
-    'cross-references',
-    'primary-keys',
-    'datetime-formats',
-    'vocabulary',
-    'completeness',
-    'identifier-format',
-    'config-entity-rules',
-    'metadata-requirements',
-    'expected-files',
-    'reproducibility'
-  ],
+  plugins: [...DEFAULT_OPTIONAL_PLUGIN_IDS],
   aliases: [
     { from: 'codeableConcept', to: 'code', severity: 'warn' },
     { from: 'effective', to: 'effectiveDateTime', severity: 'info' }

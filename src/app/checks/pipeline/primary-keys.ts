@@ -4,7 +4,7 @@
 
 import type { CheckIssue } from '../types';
 import type { ValidationConfig } from '../config/types';
-import { issue } from './helpers';
+import { issue, resourceLocation } from './helpers';
 
 export function runPrimaryKeyChecks(
   config: ValidationConfig,
@@ -17,7 +17,7 @@ export function runPrimaryKeyChecks(
   const seen = new Map<string, string>();
 
   resources.forEach((resource, index) => {
-    const location = `${resourceType}/${typeof resource['id'] === 'string' ? resource['id'] : index + 1}`;
+    const location = resourceLocation(resource, resourceType, index);
     const keyParts = keys.map((k) => {
       const v = resource[k];
       return v === undefined || v === null ? '' : String(v);

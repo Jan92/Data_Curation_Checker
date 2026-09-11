@@ -3,7 +3,7 @@
  */
 
 import type { CheckIssue } from '../types';
-import { issue } from './helpers';
+import { issue, resourceLocation } from './helpers';
 
 const ISO_DATE =
   /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/;
@@ -96,8 +96,7 @@ export function runDateTimeChecks(resources: Array<Record<string, unknown>>, res
   const issues: CheckIssue[] = [];
 
   resources.forEach((resource, index) => {
-    const id = typeof resource['id'] === 'string' ? resource['id'] : String(index + 1);
-    const location = `${resourceType}/${id}`;
+    const location = resourceLocation(resource, resourceType, index);
 
     const effective = checkInstant(resource['effectiveDateTime'], 'effectiveDateTime', location, issues);
     const issued = checkInstant(resource['issued'], 'issued', location, issues);

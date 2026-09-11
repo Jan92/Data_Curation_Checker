@@ -3,17 +3,20 @@
  */
 
 import type { CheckIssue } from '../types';
-import { issue } from './helpers';
+import { issue, resourceLocation } from './helpers';
 
 const OBS_STATUS = new Set([
   'registered',
+  'specimen-in-process',
   'preliminary',
   'final',
   'amended',
   'corrected',
+  'appended',
   'cancelled',
   'entered-in-error',
-  'unknown'
+  'unknown',
+  'cannot-be-obtained'
 ]);
 
 const DR_STATUS = new Set([
@@ -75,8 +78,7 @@ export function runVocabularyChecks(
   const statusSet = resourceType === 'Observation' ? OBS_STATUS : DR_STATUS;
 
   resources.forEach((resource, index) => {
-    const id = typeof resource['id'] === 'string' ? resource['id'] : String(index + 1);
-    const location = `${resourceType}/${id}`;
+    const location = resourceLocation(resource, resourceType, index);
     const status = resource['status'];
 
     if (typeof status === 'string' && !statusSet.has(status)) {
