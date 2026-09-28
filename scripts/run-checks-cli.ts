@@ -15,8 +15,10 @@ import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve, basename, join } from 'path';
 import {
   runDataCurationCheck,
+  runDictionaryWorkbookCheck,
   formatReport,
   reportFileExtension,
+  isExcelWorkbookName,
   type ValidationMode,
   type DccRunReport
 } from '../src/app/checks/fhir-observation-checks';
@@ -33,12 +35,12 @@ function printHelp(): void {
   console.log(`Usage: check:cli [options]
 
 Input:
-  --file <path>          Dataset file (.json / .ndjson / .txt / .csv). Repeatable.
+  --file <path>          Dataset or dictionary (.json / .ndjson / .txt / .csv / .xlsx). Repeatable.
   --dir <path>           Validate all supported files in a directory.
-  (stdin)                Used when no --file/--dir is given.
+  (stdin)                Used when no --file/--dir is given. Not used for .xlsx.
 
 Config / context:
-  --config <path>        Validation config (.json / .yaml / .csv). Default: built-in fhir-lab-v1.
+  --config <path>        Validation config (.json / .yaml / .csv) or an Excel data dictionary (.xlsx).
   --dataset-id <id>      Dataset identifier (default: file name or stdin-dataset).
   --study-id <id>        Study id (e.g. SHIELD-CC-2025 / SHIELD-OC-2025).
   --dictionary-ref <t>   Dictionary / appendix reference for the run.
@@ -113,24 +115,31 @@ async function main(): Promise<void> {
   }
 
   for (const filePath of inputFiles) {
-    const content = readFileSync(filePath, 'utf-8');
-    const report = runDataCurationCheck(content, {
-      source: 'File',
-      sourceDetail: filePath,
-      config,
-      runContext: {
-        datasetId: datasetId ?? basename(filePath),
-        sourceSite: sourceSite ?? 'local',
-        mode: inputFiles.length > 1 ? 'batch' : mode,
-        timeframe,
-        license,
-        provenance,
-        studyId: studyId ?? config.studyId,
-        dictionaryRef: dictionaryRef ?? config.dictionaryRef,
-        inputFiles: [filePath],
-        schemaVersion: config.version
-      }
-    });
+    const runContext = {
+      datasetId: datasetId ?? basename(filePath),
+      sourceSite: sourceSite ?? 'local',
+      mode: inputFiles.length > 1 ? 'batch' : mode,
+      timeframe,
+      license,
+      provenance,
+      studyId: studyId ?? config.studyId,
+      dictionaryRef: dictionaryRef ?? config.dictionaryRef,
+      inputFiles: [filePath],
+      schemaVersion: config.version
+    };
+    const report = isExcelWorkbookName(filePath)
+      ? runDictionaryWorkbookCheck(new Uint8Array(readFileSync(filePath)), basename(filePath), {
+          source: 'File',
+          sourceDetail: filePath,
+          config,
+          runContext
+        })
+      : runDataCurationCheck(readFileSync(filePath, 'utf-8'), {
+          source: 'File',
+          sourceDetail: filePath,
+          config,
+          runContext
+        });
     reports.push(report);
   }
 

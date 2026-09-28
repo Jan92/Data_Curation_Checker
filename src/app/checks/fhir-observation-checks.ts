@@ -65,9 +65,17 @@ export {
   parseTabularDataset,
   runTabularDictionaryChecks
 } from './pipeline/tabular-dictionary';
+export {
+  compileDictionaryWorkbook,
+  runDictionaryWorkbookCheck,
+  isExcelWorkbookName,
+  parseDataDictionary,
+  auditDataDictionary
+} from './dictionary';
 export { DCC_PRESETS, findPreset } from './presets/catalog';
 export type { DccPreset, PresetKind } from './presets/catalog';
-export { fetchTextAsset } from './presets/load-asset';
+export type { DataDictionaryDocument } from './dictionary';
+export { fetchTextAsset, fetchBinaryAsset } from './presets/load-asset';
 export type {
   DatasetRunContext,
   ValidationConfig,

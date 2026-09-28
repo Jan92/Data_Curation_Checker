@@ -8,7 +8,9 @@ The same validation engine powers the **web UI** and the **CLI scripts**.
 
 ## Features
 
-- Import validation schemas from **JSON**, **YAML**, and **CSV**
+- Import validation schemas from **JSON**, **YAML**, **CSV**, and **Excel data dictionaries** (`.xlsx`)
+- Audit a study data dictionary before it is used as a schema: required/null contradictions, date-order conflicts, values present in the extract but missing from the acceptable list, unbounded `VARCHAR( )`, companion value lists
+- Compile that workbook into a CSV validation config (categories become tables, acceptable values and numeric ranges become field rules)
 - Versioned configs with **hash + snapshot** per run
 - Dataset/run context (dataset ID, study ID, dictionary ref, source/site, timeframe, mode, files, license, provenance)
 - **SHIELD study dictionaries:** SHIELD-CC-2025 / SHIELD-OC-2025 (V2 & V3) as declarative configs for automated refresh QA
@@ -48,6 +50,48 @@ npm run check:cli -- \
 ```
 
 Multi-table packages can be supplied as a JSON map of `tableName → CSV text`, or as individual CSV files validated against the matching entity `table` name.
+
+---
+
+## Excel data dictionaries
+
+Study catalogues such as the SEARCH cervical and ovarian workbooks are field lists, not patient tables. The checker reads that shape without hardcoding either workbook:
+
+| Column role | Typical header |
+|-------------|----------------|
+| Category | `Data Fields Category` or `Data Field Category` (often merged down) |
+| Index | blank header, numeric body |
+| Field | `Data Fields` or `Data Field` |
+| Definition, type, format | `Description / Definition`, `Data Type`, `Format / Character length` |
+| Domain | `Value Range/ Acceptable values` and `Existing values in dataset` |
+| Flags | `Required?`, `Accepts null value?` |
+
+Header wording can vary. A side sheet that is only a value list is compared with the closest field; it is not treated as a second dictionary.
+
+Audit the workbook itself:
+
+```bash
+npm run check:cli -- \
+  --file ./dictionary.xlsx \
+  --dataset-id DICT-refresh-01 \
+  --source-site local-lab \
+  --format md --out dictionary-audit.md --gate-exit
+```
+
+Blocking findings (gate FAIL) include a required field that also accepts null, a duplicate field name, and a date sample that cannot match the declared order (`MM-DD-YYYY` vs `31/08/2015`). Warnings cover undeclared existing values, empty `VARCHAR( )`, and numeric windows labelled as categorical.
+
+Compile the workbook into the CSV schema, or audit the synthetic clean catalogue (warnings only, gate PASS):
+
+```bash
+npm run check:config -- --config ./dictionary.xlsx
+npm run check:dictionary
+```
+
+In the web UI, upload the `.xlsx` as the dataset and run the gate, then **Use as validation config**. Column headers in a CSV extract must match the trimmed dictionary field names. One category becomes one CSV (`follow_up.csv`, …), or a JSON map of those table names to CSV text.
+
+The sample workbooks under `configs/samples/search-dictionary-*.xlsx` are synthetic. They follow the catalogue layout; they are not copies of a study dictionary.
+
+Regenerate them with `python3 scripts/build-dictionary-fixtures.py` (needs `openpyxl`). `npm run check:dictionary` checks both fixtures and, when given extra paths, prints a summary of those workbooks.
 
 ---
 
@@ -169,6 +213,7 @@ scripts/
   ui-smoke.cjs               # Playwright UI smoke
 src/app/checks/              # shared engine (UI + CLI)
   index.ts                   # public barrel
+  dictionary/                # Excel data-dictionary reader, audit, compile
   fhir-observation-checks.ts # FHIR validators + runDataCurationCheck
   config/                    # types, default config, hash, rules
   io/                        # config loaders + report formatters

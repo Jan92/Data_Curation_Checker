@@ -33,6 +33,16 @@ export interface EntityFieldRule {
   dateTimePattern?: string;
   severity?: FieldSeverity;
   description?: string;
+  /** Inclusive lower bound unless `minInclusive` is false. */
+  min?: number;
+  /** Inclusive upper bound unless `maxInclusive` is false. */
+  max?: number;
+  minInclusive?: boolean;
+  maxInclusive?: boolean;
+  /** Maximum character length parsed from `VARCHAR(n)` / `CHAR(n)`. */
+  maxLength?: number;
+  /** Unit of measure copied from a data dictionary, when one was declared. */
+  units?: string;
 }
 
 export interface EntityRule {
@@ -85,6 +95,16 @@ export interface ValidationConfig {
   studyId?: string;
   /** Human-readable dictionary source (e.g. Appendix 10 V2). */
   dictionaryRef?: string;
+  /**
+   * Present when the config was compiled from an Excel data dictionary.
+   * Dataset checks still use `entities`; this block records the source workbook.
+   */
+  dictionarySource?: {
+    fileName: string;
+    sheets: string[];
+    fieldCount: number;
+    categoryCount: number;
+  };
   /** If true, any error fails the quality gate (default true). */
   failOnError?: boolean;
   /** If true, warnings also fail the gate (default false). */

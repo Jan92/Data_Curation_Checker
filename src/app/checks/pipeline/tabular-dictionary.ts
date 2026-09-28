@@ -40,6 +40,10 @@ export interface TabularParseResult {
 
 const DATE_PATTERNS: Record<string, RegExp> = {
   'YYYY-MM-DD': /^\d{4}-\d{2}-\d{2}$/,
+  'MM-DD-YYYY': /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])-\d{4}$/,
+  'DD-MM-YYYY': /^(0[1-9]|[12]\d|3[01])-(0[1-9]|1[0-2])-\d{4}$/,
+  'MM/DD/YYYY': /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/,
+  'DD/MM/YYYY': /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/,
   'YYYY-MM-DDTHH:mm:ss': /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
   'YYYY-MM-DDTHH:mm:ssZ': /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/,
   ISO8601: /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/
@@ -256,7 +260,18 @@ function fieldRuleMap(entity: EntityRule): Map<string, EntityFieldRule> {
   return map;
 }
 
-function validateDataType(value: string, dataType: string | undefined, field: string, location: string): CheckIssue | null {
+function isDateType(dataType: string | undefined): boolean {
+  const t = dataType?.toLowerCase() ?? '';
+  return t === 'date' || t === 'datetime';
+}
+
+function validateDataType(
+  value: string,
+  dataType: string | undefined,
+  field: string,
+  location: string,
+  datePattern?: string
+): CheckIssue | null {
   if (!dataType || value === '') return null;
   const t = dataType.toLowerCase();
   if (t === 'integer' || t === 'int') {
@@ -304,13 +319,14 @@ function validateDataType(value: string, dataType: string | undefined, field: st
       });
     }
   }
-  if (t === 'date' || t === 'datetime' || t === 'dateTime') {
-    const re = DATE_PATTERNS['ISO8601'];
-    if (!re.test(value)) {
+  if (t === 'date' || t === 'datetime') {
+    const re = (datePattern && resolvePattern(datePattern)) || DATE_PATTERNS['ISO8601'];
+    const expected = datePattern || 'ISO8601';
+    if (re && !re.test(value)) {
       return issue({
         severity: 'error',
         label: 'Invalid date/time',
-        detail: `${field}="${value}" does not match ISO8601 date/dateTime.`,
+        detail: `${field}="${value}" does not match ${expected}.`,
         location,
         category: 'datetime',
         code: 'DATATYPE_DATETIME',
@@ -321,6 +337,21 @@ function validateDataType(value: string, dataType: string | undefined, field: st
     }
   }
   return null;
+}
+
+/** Case-insensitive membership. Dictionary extracts often differ only by case. */
+function allowableIncludes(allowed: string[], value: string): boolean {
+  if (allowed.includes(value)) return true;
+  const key = value.trim().toLowerCase();
+  return allowed.some((item) => item.trim().toLowerCase() === key);
+}
+
+function formatRange(rule: EntityFieldRule): string {
+  const min =
+    rule.min == null ? '' : `${rule.minInclusive === false ? '>' : '>='} ${rule.min}`;
+  const max =
+    rule.max == null ? '' : `${rule.maxInclusive === false ? '<' : '<='} ${rule.max}`;
+  return [min, max].filter(Boolean).join(' and ') || 'the declared range';
 }
 
 export interface TabularValidationExtras {
@@ -484,7 +515,9 @@ export function runTabularDictionaryChecks(
     }
 
     const rules = fieldRuleMap(entity);
-    const pkFields = entity.primaryKeys?.length ? entity.primaryKeys : required.slice(0, 1);
+    // An explicit empty list means the dictionary did not declare a primary key.
+    // Omitted primaryKeys still fall back to the first required column.
+    const pkFields = entity.primaryKeys !== undefined ? entity.primaryKeys : required.slice(0, 1);
     const seenKeys = new Map<string, string>();
 
     table.rows.forEach((row, rowIndex) => {
@@ -513,10 +546,52 @@ export function runTabularDictionaryChecks(
         const rule = rules.get(field);
         if (!rule || value === '') continue;
 
-        const dtIssue = validateDataType(value, rule.dataType, field, location);
+        const dtIssue = validateDataType(value, rule.dataType, field, location, rule.dateTimePattern);
         if (dtIssue) issues.push(dtIssue);
 
-        if (rule.allowableValues?.length && !rule.allowableValues.includes(value)) {
+        const numeric = /^-?\d+(?:\.\d+)?$/.test(value);
+        const hasRange = rule.min != null || rule.max != null;
+        if (hasRange && numeric) {
+          const n = Number(value);
+          const minOk = rule.min == null || (rule.minInclusive === false ? n > rule.min : n >= rule.min);
+          const maxOk = rule.max == null || (rule.maxInclusive === false ? n < rule.max : n <= rule.max);
+          if (!minOk || !maxOk) {
+            issues.push(
+              issue({
+                severity: rule.severity === 'warn' ? 'warn' : 'error',
+                label: 'Value outside range',
+                detail: `${field}="${value}" is outside ${formatRange(rule)}.`,
+                location,
+                category: 'structure',
+                code: 'VALUE_OUTSIDE_RANGE',
+                field,
+                rawValue: value,
+                suiteId: 'tabular-dictionary'
+              })
+            );
+          }
+        }
+
+        if (rule.maxLength != null && value.length > rule.maxLength) {
+          issues.push(
+            issue({
+              severity: rule.severity === 'warn' ? 'warn' : 'error',
+              label: 'Value exceeds length',
+              detail: `${field} is ${value.length} characters; the dictionary allows ${rule.maxLength}.`,
+              location,
+              category: 'structure',
+              code: 'MAX_LENGTH',
+              field,
+              rawValue: value,
+              suiteId: 'tabular-dictionary'
+            })
+          );
+        }
+
+        // A numeric value governed by min/max is not also required to appear in
+        // the code list. That list holds sentinels such as "Not Applicable".
+        const rangedNumber = hasRange && numeric;
+        if (rule.allowableValues?.length && !rangedNumber && !allowableIncludes(rule.allowableValues, value)) {
           issues.push(
             issue({
               severity: rule.severity === 'warn' ? 'warn' : 'error',
@@ -532,7 +607,7 @@ export function runTabularDictionaryChecks(
           );
         }
 
-        const pattern = rule.regex || rule.dateTimePattern;
+        const pattern = rule.regex || (isDateType(rule.dataType) ? undefined : rule.dateTimePattern);
         if (pattern) {
           const re = resolvePattern(pattern);
           if (re && !re.test(value)) {

@@ -12,6 +12,10 @@ import {
   DCC_PRESETS,
   findPreset,
   fetchTextAsset,
+  fetchBinaryAsset,
+  runDictionaryWorkbookCheck,
+  compileDictionaryWorkbook,
+  isExcelWorkbookName,
   type CheckResult,
   type CheckIssue,
   type CheckStatus,
@@ -59,7 +63,7 @@ const CONTEXT_STORAGE_KEY = 'dcc-run-context-v1';
 const GUIDE_STORAGE_KEY = 'dcc-guide-open';
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const RESULT_TABS: ResultTab[] = ['summary', 'checks', 'issues', 'records'];
-const DATASET_EXTENSIONS = ['.json', '.ndjson', '.txt', '.csv'];
+const DATASET_EXTENSIONS = ['.json', '.ndjson', '.txt', '.csv', '.xlsx'];
 const SEVERITY_ORDER: Record<CheckStatus, number> = { error: 0, warn: 1, ok: 2 };
 
 @Component({
@@ -123,6 +127,8 @@ export class AppComponent {
   private cachedFilteredIssues: CheckIssue[] = [];
 
   guideOpen = true;
+  /** Compiled schema from the last Excel dictionary run or config upload. */
+  dictionaryReady: ValidationConfig | null = null;
 
   constructor() {
     this.restoreRunContext();
@@ -142,8 +148,21 @@ export class AppComponent {
   async downloadWebsiteAsset(relativePath: string): Promise<void> {
     this.validationError = null;
     try {
-      const text = await fetchTextAsset(relativePath);
       const name = relativePath.split('/').pop() || 'download.txt';
+      if (isExcelWorkbookName(name)) {
+        const bytes = await fetchBinaryAsset(relativePath);
+        const blob = new Blob([bytes], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = name;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+      const text = await fetchTextAsset(relativePath);
       downloadTextFile(text, name);
     } catch (error) {
       this.validationError = this.toErrorMessage(error, 'Could not download asset.');
@@ -292,7 +311,11 @@ export class AppComponent {
       const fileName = file.name.toLowerCase();
       const hasValidExtension = DATASET_EXTENSIONS.some((ext) => fileName.endsWith(ext));
       const hasValidType =
-        file.type.includes('json') || file.type.includes('text') || file.type.includes('csv');
+        file.type.includes('json') ||
+        file.type.includes('text') ||
+        file.type.includes('csv') ||
+        file.type.includes('spreadsheet') ||
+        file.type.includes('excel');
 
       if (!hasValidExtension && !hasValidType) {
         this.validationError = `File type not supported. Please use ${DATASET_EXTENSIONS.join(', ')} files.`;
@@ -313,6 +336,7 @@ export class AppComponent {
     this.selectedFileName = '';
     this.selectedFileSize = '';
     this.validationError = null;
+    this.dictionaryReady = null;
     if (this.fileInput?.nativeElement) {
       this.fileInput.nativeElement.value = '';
     }
@@ -338,6 +362,16 @@ export class AppComponent {
 
     this.configLoadError = null;
     try {
+      if (isExcelWorkbookName(file.name)) {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const compiled = compileDictionaryWorkbook(bytes, file.name);
+        this.dictionaryReady = compiled.config;
+        this.setActiveConfig(compiled.config, file.name);
+        this.selectedPresetId = '';
+        if (compiled.config.dictionaryRef) this.dictionaryRef = compiled.config.dictionaryRef;
+        this.clearResults();
+        return;
+      }
       const parsed = loadAndValidateConfigText(await file.text(), file.name);
       this.setActiveConfig(parsed, file.name);
       this.selectedPresetId = '';
@@ -354,6 +388,7 @@ export class AppComponent {
     this.setActiveConfig(DEFAULT_FHIR_LAB_CONFIG, 'Built-in fhir-lab-v1');
     this.configLoadError = null;
     this.selectedPresetId = 'fhir-lab-v1';
+    this.dictionaryReady = null;
     if (this.configInput?.nativeElement) {
       this.configInput.nativeElement.value = '';
     }
@@ -391,6 +426,45 @@ export class AppComponent {
     );
   }
 
+  /** Load the built-in workbook that demonstrates dictionary findings, then run the gate. */
+  async loadDictionaryDemo(): Promise<void> {
+    this.validationError = null;
+    this.isLoadingPreset = true;
+    try {
+      const bytes = await fetchBinaryAsset('configs/samples/search-dictionary-demo.xlsx');
+      const file = new File([bytes], 'search-dictionary-demo.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      this.inputText = '';
+      this.selectedFile = file;
+      this.selectedFileName = file.name;
+      this.selectedFileSize = formatBytes(file.size);
+      this.clearResults();
+      await this.runCheck();
+    } catch (error) {
+      this.validationError = this.toErrorMessage(error, 'Could not load the sample dictionary.');
+    } finally {
+      this.isLoadingPreset = false;
+    }
+  }
+
+  /** Use the compiled dictionary as the active config for a later CSV extract. */
+  adoptDictionaryConfig(): void {
+    if (!this.dictionaryReady) return;
+    this.setActiveConfig(this.dictionaryReady, this.dictionaryReady.dictionarySource?.fileName ?? this.dictionaryReady.name);
+    this.selectedPresetId = '';
+    if (this.dictionaryReady.dictionaryRef) this.dictionaryRef = this.dictionaryReady.dictionaryRef;
+    this.configLoadError = null;
+  }
+
+  downloadCompiledDictionary(): void {
+    if (!this.dictionaryReady) return;
+    downloadTextFile(
+      JSON.stringify(this.dictionaryReady, null, 2),
+      `${this.dictionaryReady.id}.json`
+    );
+  }
+
   async runCheck(): Promise<void> {
     if (!this.hasInput) {
       this.clearResults();
@@ -399,6 +473,7 @@ export class AppComponent {
 
     this.isLoading = true;
     this.validationError = null;
+    this.dictionaryReady = null;
     this.checkResults = [];
     this.issues = [];
     this.gate = null;
@@ -407,33 +482,49 @@ export class AppComponent {
 
     try {
       const source = this.selectedFile ? 'File' : 'Text';
-      const content = this.selectedFile ? await this.selectedFile.text() : this.inputText;
+      const runContext = {
+        datasetId: this.datasetId.trim() || this.selectedFileName || 'interactive-dataset',
+        sourceSite: this.sourceSite.trim() || 'local',
+        timeframe: this.timeframe.trim() || undefined,
+        mode: this.runMode,
+        inputFiles: this.selectedFileName ? [this.selectedFileName] : [],
+        license: this.licenseField.trim() || undefined,
+        provenance: this.provenance.trim() || undefined,
+        studyId: this.studyId.trim() || this.activeConfig.studyId,
+        dictionaryRef: this.dictionaryRef.trim() || this.activeConfig.dictionaryRef,
+        schemaVersion: this.effectiveConfig.version
+      };
 
-      if (!content?.trim()) {
-        throw new Error('Input is empty.');
+      const workbook = Boolean(this.selectedFile && isExcelWorkbookName(this.selectedFileName));
+      let report: DccRunReport;
+      if (!workbook) {
+        const content = this.selectedFile ? await this.selectedFile.text() : this.inputText;
+        if (!content.trim()) throw new Error('Input is empty.');
+        report = runDataCurationCheck(content, {
+          source,
+          sourceDetail: this.selectedFileName || undefined,
+          config: this.activeConfig,
+          runContext
+        });
+      } else {
+        report = runDictionaryWorkbookCheck(
+          new Uint8Array(await this.selectedFile!.arrayBuffer()),
+          this.selectedFileName,
+          {
+            source,
+            sourceDetail: this.selectedFileName,
+            config: this.activeConfig,
+            runContext
+          }
+        );
       }
-
-      const report = runDataCurationCheck(content, {
-        source,
-        sourceDetail: this.selectedFileName || undefined,
-        config: this.activeConfig,
-        runContext: {
-          datasetId: this.datasetId.trim() || this.selectedFileName || 'interactive-dataset',
-          sourceSite: this.sourceSite.trim() || 'local',
-          timeframe: this.timeframe.trim() || undefined,
-          mode: this.runMode,
-          inputFiles: this.selectedFileName ? [this.selectedFileName] : [],
-          license: this.licenseField.trim() || undefined,
-          provenance: this.provenance.trim() || undefined,
-          studyId: this.studyId.trim() || this.activeConfig.studyId,
-          dictionaryRef: this.dictionaryRef.trim() || this.activeConfig.dictionaryRef,
-          schemaVersion: this.effectiveConfig.version
-        }
-      });
 
       this.lastRunReport = report;
       this.gate = report.gate;
       this.lastParsedType = report.parseResult.type;
+      if (workbook && report.parseResult.ok) {
+        this.dictionaryReady = report.config.snapshot;
+      }
       this.issues = report.issues;
       this.checkResults = report.checkResults;
       this.resultTab = 'summary';

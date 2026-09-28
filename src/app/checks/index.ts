@@ -29,7 +29,11 @@ export {
   runCheckPipeline,
   DCC_PRESETS,
   findPreset,
-  fetchTextAsset
+  fetchTextAsset,
+  fetchBinaryAsset,
+  runDictionaryWorkbookCheck,
+  compileDictionaryWorkbook,
+  isExcelWorkbookName
 } from './fhir-observation-checks';
 
 export type {
@@ -51,5 +55,6 @@ export type {
   AliasMapping,
   CrossFileReference,
   DccPreset,
-  PresetKind
+  PresetKind,
+  DataDictionaryDocument
 } from './fhir-observation-checks';

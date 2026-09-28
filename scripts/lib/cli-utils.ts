@@ -7,6 +7,8 @@ import { resolve, basename, extname, join } from 'path';
 import {
   DEFAULT_FHIR_LAB_CONFIG,
   loadAndValidateConfigText,
+  compileDictionaryWorkbook,
+  isExcelWorkbookName,
   type ValidationConfig
 } from '../../src/app/checks/fhir-observation-checks';
 
@@ -33,6 +35,10 @@ export function hasFlag(args: string[], name: string): boolean {
 export function loadConfigFromPath(path?: string): ValidationConfig {
   if (!path) return DEFAULT_FHIR_LAB_CONFIG;
   const abs = resolve(path);
+  if (isExcelWorkbookName(abs)) {
+    const bytes = new Uint8Array(readFileSync(abs));
+    return compileDictionaryWorkbook(bytes, basename(abs)).config;
+  }
   const raw = readFileSync(abs, 'utf-8');
   return loadAndValidateConfigText(raw, basename(abs));
 }
@@ -48,7 +54,7 @@ export function collectInputFiles(fileArgs: string[], dirArg?: string): string[]
       const full = join(dir, name);
       if (!statSync(full).isFile()) continue;
       const ext = extname(name).toLowerCase();
-      if (['.json', '.ndjson', '.txt', '.csv'].includes(ext)) {
+      if (['.json', '.ndjson', '.txt', '.csv', '.xlsx'].includes(ext)) {
         files.push(full);
       }
     }

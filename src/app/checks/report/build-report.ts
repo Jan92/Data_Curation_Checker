@@ -12,7 +12,7 @@ import type {
 } from '../config/types';
 import { issueCodeFromLabel } from '../pipeline/helpers';
 
-export const TOOL_VERSION = '0.6.1';
+export const TOOL_VERSION = '0.7.0';
 
 export interface SummaryExtras {
   rowCount?: number;
@@ -21,6 +21,11 @@ export interface SummaryExtras {
   unexpectedFiles?: string[];
   missingColumns?: string[];
   unexpectedColumns?: string[];
+  /**
+   * Record ids that should be counted even when they have no finding.
+   * Dictionary audits pass one key per field (`Category/row/12`).
+   */
+  recordKeys?: string[];
 }
 
 export interface DccRunReport {
@@ -143,7 +148,11 @@ export function buildSummary(
   const observationCount = parseResult.resources?.length ?? 0;
   const diagnosticReportCount = parseResult.diagnosticReports?.length ?? 0;
   const resourceKeys = resourceKeysFromParse(parseResult);
-  const tabularKeys = extras?.rowCount ? recordKeysFromIssues(issues) : [];
+  const tabularKeys = extras?.recordKeys?.length
+    ? extras.recordKeys
+    : extras?.rowCount
+      ? recordKeysFromIssues(issues)
+      : [];
   const keys = resourceKeys.length ? resourceKeys : tabularKeys;
 
   let failCount = 0;

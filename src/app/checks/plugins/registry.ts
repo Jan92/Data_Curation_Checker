@@ -100,6 +100,11 @@ export const BUILTIN_PLUGINS: BuiltinPlugin[] = [
     category: 'structure'
   },
   {
+    id: 'dictionary-workbook',
+    description: 'Excel study data-dictionary audit (field catalogue, domains, date samples)',
+    category: 'structure'
+  },
+  {
     id: 'reproducibility',
     description: 'Config hash, tool version, deterministic run metadata',
     category: 'reproducibility'

@@ -4,8 +4,8 @@
       <p class="brand-kicker">Data Curation Checker <span class="version-pill">v{{ toolVersion }}</span></p>
       <h1>Quality gate for curated datasets</h1>
       <p class="subtitle">
-        Validate FHIR laboratory resources or SHIELD study packages entirely in your browser.
-        Same engine as the CLI — nothing is uploaded to a server.
+        Validate FHIR laboratory resources, SHIELD study packages, or an Excel data dictionary
+        entirely in your browser. Same engine as the CLI — nothing is uploaded to a server.
       </p>
       <div class="header-actions">
         <button
@@ -65,11 +65,11 @@
     <ol class="guide-steps">
       <li>
         <strong>Choose a validation config</strong>
-        <span>Use a website preset (FHIR or SHIELD) or upload JSON / YAML / CSV.</span>
+        <span>Use a website preset, upload JSON / YAML / CSV, or upload an Excel data dictionary (.xlsx).</span>
       </li>
       <li>
         <strong>Load your dataset</strong>
-        <span>Upload a file, paste JSON/CSV package text, or load a built-in sample.</span>
+        <span>Upload a file, paste JSON/CSV, or audit the sample Excel dictionary.</span>
       </li>
       <li>
         <strong>Fill run context</strong>
@@ -107,9 +107,9 @@
           <strong>Current preset sample</strong>
           <span>{{ selectedPreset?.samplePath || 'generated FHIR sample' }}</span>
         </button>
-        <button type="button" class="download-card" (click)="downloadSampleFile()" [disabled]="isProcessing">
-          <strong>FHIR sample (issues)</strong>
-          <span>deliberate errors for demos</span>
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/samples/search-dictionary-demo.xlsx')" [disabled]="isProcessing">
+          <strong>Sample data dictionary</strong>
+          <span>search-dictionary-demo.xlsx</span>
         </button>
       </div>
       <p class="guide-repo">
@@ -235,14 +235,14 @@
             Download config
           </button>
           <label class="config-upload">
-            <span>Or upload config (JSON / YAML / CSV)</span>
+            <span>Or upload config (JSON / YAML / CSV / Excel dictionary)</span>
             <input
               #configInput
               type="file"
-              accept=".json,.yaml,.yml,.csv,application/json,text/yaml,text/csv"
+              accept=".json,.yaml,.yml,.csv,.xlsx,application/json,text/yaml,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               (change)="handleConfigSelected($event)"
               [disabled]="isProcessing"
-              aria-label="Upload validation configuration"
+              aria-label="Upload validation configuration or Excel data dictionary"
             />
           </label>
           <button
@@ -259,7 +259,7 @@
 
       <h2>Data source</h2>
       <p class="panel-lead">
-        FHIR JSON / NDJSON, study package JSON (multi-CSV map), or a single CSV — max 10&nbsp;MB.
+        FHIR JSON / NDJSON, a study CSV package, or an Excel data dictionary (.xlsx) — max 10&nbsp;MB.
       </p>
 
       <div class="panel-block">
@@ -268,11 +268,11 @@
           <input
             #fileInput
             type="file"
-            accept=".json,.ndjson,.txt,.csv,application/json,text/plain,text/csv"
+            accept=".json,.ndjson,.txt,.csv,.xlsx,application/json,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             (change)="handleFileSelected($event)"
             [disabled]="isProcessing"
             aria-describedby="file-hint"
-            aria-label="Upload curated annotated dataset file"
+            aria-label="Upload curated dataset or Excel data dictionary"
           />
           <small id="file-hint" class="field-hint">Processed locally in this browser only</small>
         </label>
@@ -320,6 +320,15 @@
         >
           Load FHIR example
         </button>
+        <button
+          class="demo-button secondary-demo"
+          type="button"
+          (click)="loadDictionaryDemo()"
+          [disabled]="isProcessing"
+          aria-label="Audit the sample Excel data dictionary"
+        >
+          Audit sample dictionary
+        </button>
         <p class="demo-hint">
           Fastest path: open the guide and tap <strong>Try one-click demo</strong>, or use <strong>Run preset demo</strong> above.
         </p>
@@ -359,8 +368,10 @@
       >
         <span class="gate-label">Quality gate</span>
         <strong class="gate-value">{{ gate }}</strong>
-        <p *ngIf="gate === 'PASS'">Dataset may proceed to transfer / platform upload.</p>
-        <p *ngIf="gate === 'FAIL'">Dataset rejected — notify the data provider with the issues below.</p>
+        <p *ngIf="gate === 'PASS' && !dictionaryReady">Dataset may proceed to transfer / platform upload.</p>
+        <p *ngIf="gate === 'PASS' && dictionaryReady">No blocking dictionary defects. Adopt it as the validation config before checking a data extract.</p>
+        <p *ngIf="gate === 'FAIL' && !dictionaryReady">Dataset rejected — notify the data provider with the issues below.</p>
+        <p *ngIf="gate === 'FAIL' && dictionaryReady">Dictionary has blocking defects. You can still adopt the compiled field list, then fix the errors before relying on it.</p>
       </div>
 
       <div class="export-row" *ngIf="lastRunReport">
@@ -368,6 +379,12 @@
         <button class="secondary" type="button" (click)="downloadMarkdownReport()">Export Markdown</button>
         <button class="secondary" type="button" (click)="downloadHtmlReport()">Export HTML</button>
         <button class="secondary" type="button" (click)="openPrintableReport()">Print / PDF</button>
+        <button class="secondary" type="button" *ngIf="dictionaryReady" (click)="adoptDictionaryConfig()">
+          Use as validation config
+        </button>
+        <button class="secondary" type="button" *ngIf="dictionaryReady" (click)="downloadCompiledDictionary()">
+          Download compiled config
+        </button>
       </div>
 
       <div class="info-box" *ngIf="!checkResults.length">
@@ -379,7 +396,7 @@
           </div>
           <div class="capability-item">
             <strong>Check suites</strong>
-            <span>FHIR laboratory or SHIELD dictionary rules</span>
+            <span>FHIR laboratory, SHIELD packages, or Excel data dictionaries</span>
           </div>
           <div class="capability-item">
             <strong>Issues &amp; records</strong>

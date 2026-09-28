@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Validate a DCC validation configuration (JSON / YAML / CSV) before dataset runs.
+ * Validate a DCC validation configuration (JSON / YAML / CSV / Excel dictionary).
  *
  * Examples:
  *   npm run check:config -- --config ./configs/fhir-lab-v1.json
  *   npm run check:config -- --config ./configs/fhir-lab-v1.yaml
  *   npm run check:config -- --config ./configs/fhir-lab-v1.fields.csv
+ *   npm run check:config -- --config ./dictionary.xlsx
  *   npm run check:config
  */
 
@@ -21,7 +22,7 @@ import { argValue, hasFlag, loadConfigFromPath } from './lib/cli-utils';
 function printHelp(): void {
   console.log(`Usage: check:config [--config <path>] [--list-plugins]
 
-  --config <path>   JSON, YAML, or CSV validation schema (default: built-in).
+  --config <path>   JSON, YAML, CSV, or Excel data dictionary (.xlsx). Default: built-in.
   --list-plugins    Print built-in plugin ids and exit.
   --help, -h        Show this help.
 
