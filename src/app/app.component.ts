@@ -135,7 +135,8 @@ export class AppComponent {
     const storedGuide = readLocalFlag(GUIDE_STORAGE_KEY);
     if (storedGuide !== null) {
       this.guideOpen = storedGuide;
-    } else if (typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches) {
+    } else if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1200px)').matches) {
+      // Phone and tablet: keep the guide collapsed so the form and sticky Run control are in reach.
       this.guideOpen = false;
     }
   }

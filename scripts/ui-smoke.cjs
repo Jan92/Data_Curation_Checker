@@ -158,6 +158,33 @@ async function main() {
   await page.screenshot({ path: path.join(OUT, '14-mobile-after-run.png'), fullPage: true });
   assert((await page.locator('.gate-value').innerText()).trim() === 'PASS', 'Mobile: SHIELD demo passes');
 
+  // --- Screen 13: iPad portrait and landscape ---
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('h1');
+  assert(await page.locator('.mobile-run-bar').isVisible(), 'iPad portrait: sticky run bar visible');
+  assert(await page.locator('.desktop-run').isHidden(), 'iPad portrait: desktop run hidden');
+  const portraitOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  );
+  assert(!portraitOverflow, 'iPad portrait: no horizontal overflow');
+  await page.screenshot({ path: path.join(OUT, '15-ipad-portrait.png'), fullPage: true });
+
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await page.waitForTimeout(200);
+  assert(await page.locator('.mobile-run-bar').isVisible(), 'iPad landscape: sticky run bar visible');
+  assert(await page.locator('.desktop-run').isHidden(), 'iPad landscape: desktop run hidden');
+  const landscapeOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  );
+  assert(!landscapeOverflow, 'iPad landscape: no horizontal overflow');
+  await page.screenshot({ path: path.join(OUT, '16-ipad-landscape.png'), fullPage: true });
+
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.waitForTimeout(200);
+  assert(await page.locator('.desktop-run').isVisible(), 'Desktop: header run visible');
+  assert(await page.locator('.mobile-run-bar').isHidden(), 'Desktop: sticky run bar hidden');
+
   await browser.close();
 
   console.log('\n---');

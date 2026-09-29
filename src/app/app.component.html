@@ -81,6 +81,18 @@
       </li>
     </ol>
 
+    <section class="guide-dictionary" aria-label="Excel data dictionary">
+      <h3>Excel data dictionary</h3>
+      <p>
+        A SEARCH-style workbook is a field catalogue. Audit it first, then adopt it as the config and check a CSV extract.
+      </p>
+      <ol>
+        <li><strong>Audit.</strong> Upload the .xlsx as the dataset, or use Audit sample dictionary. FAIL means a blocking defect.</li>
+        <li><strong>Adopt.</strong> Use as validation config. Categories become tables; trimmed field names become headers.</li>
+        <li><strong>Check the extract.</strong> Paste or upload CSV / a JSON map of table name to CSV text. Headers must match the dictionary.</li>
+      </ol>
+    </section>
+
     <div class="guide-downloads">
       <h3>Downloads</h3>
       <p class="guide-downloads-lead">

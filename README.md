@@ -87,11 +87,35 @@ npm run check:config -- --config ./dictionary.xlsx
 npm run check:dictionary
 ```
 
-In the web UI, upload the `.xlsx` as the dataset and run the gate, then **Use as validation config**. Column headers in a CSV extract must match the trimmed dictionary field names. One category becomes one CSV (`follow_up.csv`, …), or a JSON map of those table names to CSV text.
+### On the website
 
-The sample workbooks under `configs/samples/search-dictionary-*.xlsx` are synthetic. They follow the catalogue layout; they are not copies of a study dictionary.
+1. **Audit** the workbook: upload the `.xlsx` as the dataset (or tap **Audit sample dictionary**) and run the gate.
+2. **Adopt** it with **Use as validation config**. Categories become tables. Trimmed field names become column headers. **Download compiled config** saves that schema as JSON.
+3. **Check the extract.** Paste or upload CSV, or a JSON map of table name to CSV text. Headers must match the dictionary. One category is one file (`follow_up.csv`, …).
+
+On a phone or tablet the guide starts collapsed. **Show guide** opens the same three steps. The sample workbooks under `configs/samples/search-dictionary-*.xlsx` are synthetic. They follow the catalogue layout; they are not copies of a study dictionary.
 
 Regenerate them with `python3 scripts/build-dictionary-fixtures.py` (needs `openpyxl`). `npm run check:dictionary` checks both fixtures and, when given extra paths, prints a summary of those workbooks.
+
+### Audit codes
+
+Errors fail the gate. Warnings stay in the report and fail the gate only with `--fail-on-warn`.
+
+| Code | Meaning |
+|------|---------|
+| `DICT_REQUIRED_ALLOWS_NULL` | Required field also accepts null |
+| `DICT_DUPLICATE_FIELD` | Same field name used twice |
+| `DICT_DATE_ORDER_CONFLICT` | A sample date cannot match the declared order, for example `MM-DD-YYYY` vs `31/08/2015` |
+| `DICT_DATE_SEPARATOR` | Sample dates use a different separator than the declared format |
+| `DICT_OBSERVED_NOT_IN_DOMAIN` | An existing value is not in the acceptable list |
+| `DICT_OBSERVED_OUTSIDE_RANGE` | An existing value sits outside the numeric window |
+| `DICT_UNBOUNDED_TEXT` | `VARCHAR( )` has no length (reported once) |
+| `DICT_BOOLEAN_AS_CATEGORICAL` | Yes/no field labelled categorical |
+| `DICT_RANGE_AS_CATEGORICAL` | A numeric window labelled categorical |
+| `DICT_COMPANION_DRIFT` | A side-sheet value list does not match the field domain |
+| `DICT_PARSE_FAILED` | The workbook could not be read |
+
+Legacy `.xls` and formula cells are not evaluated. Merged category cells are filled down. A blank index column is ignored as a field.
 
 ---
 
@@ -100,9 +124,20 @@ Regenerate them with `python3 scripts/build-dictionary-fixtures.py` (needs `open
 ```bash
 npm start          # http://localhost:4200/
 npm run build      # production → dist/
+npm run check:ui   # Playwright smoke, including phone width
 ```
 
-The UI uses `runDataCurationCheck`, `parseConfigFromText`, and `formatReport` from `src/app/checks`.
+The page is the same engine as the CLI (`runDataCurationCheck`, `parseConfigFromText`, `formatReport`). Nothing is uploaded.
+
+| Viewport | What you get |
+|----------|----------------|
+| Desktop, wider than 1200px | **Run quality gate** in the header. The guide is open on a first visit. Dataset and results sit side by side once the window is wider than 960px. |
+| iPad and other tablets, up to 1200px | The header button is hidden. A full-width **Run quality gate** stays fixed at the bottom, including the home-indicator inset. Portrait (about 820px) stacks the form. Landscape (about 1180px) keeps two columns. The guide starts collapsed. |
+| Phone, up to 720px | Same sticky control. Run context is one column. Export actions and the sample buttons are full width. Result tabs scroll sideways. The workflow steps stack. |
+
+Open **Show guide** for the four setup steps, the Excel dictionary sequence, and the download cards. After a dictionary audit, **Use as validation config** and **Download compiled config** appear with the other export actions. Adopting the workbook keeps that config active after the file is removed.
+
+Result tabs are **Summary**, **Checks**, **Issues**, and **Records**. Filter chips and long field names wrap instead of widening the page. Inputs use a 16px font so iOS does not zoom the page when a field is focused.
 
 ---
 

@@ -2,7 +2,10 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 32px clamp(16px, 4vw, 64px) calc(88px + env(safe-area-inset-bottom, 0px));
+  padding-top: 32px;
+  padding-bottom: 40px;
+  padding-left: max(clamp(16px, 4vw, 64px), env(safe-area-inset-left));
+  padding-right: max(clamp(16px, 4vw, 64px), env(safe-area-inset-right));
   max-width: 1180px;
   margin: 0 auto;
   min-width: 0;
@@ -208,6 +211,35 @@ h1 {
   line-height: 1.45;
 }
 
+.guide-dictionary {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+}
+
+.guide-dictionary h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.guide-dictionary p,
+.guide-dictionary li {
+  margin: 0;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.guide-dictionary ol {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
 .guide-downloads {
   margin-top: 20px;
   padding-top: 18px;
@@ -410,6 +442,7 @@ h1 {
   margin: 10px 0 0;
   font-size: 12px;
   color: #64748b;
+  overflow-wrap: anywhere;
 }
 
 .preset-field {
@@ -440,6 +473,8 @@ h1 {
 .config-upload input[type='file'] {
   font-size: 12px;
   font-weight: 400;
+  width: 100%;
+  max-width: 100%;
 }
 
 .config-error {
@@ -473,6 +508,7 @@ h1 {
 .gate-banner p {
   margin: 8px 0 0;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .gate-pass {
@@ -631,11 +667,13 @@ h1 {
 .summary-meta dd {
   margin: 0;
   color: #0f172a;
+  overflow-wrap: anywhere;
 }
 
 .mono {
   font-family: 'IBM Plex Mono', 'SF Mono', Monaco, monospace;
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .filter-row {
@@ -704,6 +742,7 @@ h1 {
   margin: 0 0 6px;
   font-size: 13px;
   color: #334155;
+  overflow-wrap: anywhere;
 }
 
 .violation-blocks {
@@ -723,6 +762,7 @@ h1 {
   padding-left: 18px;
   font-size: 13px;
   color: #334155;
+  overflow-wrap: anywhere;
 }
 
 .privacy-note {
@@ -840,6 +880,9 @@ h1 {
   background: #f8fafc;
   transition: all 0.2s ease;
   cursor: pointer;
+  width: 100%;
+  max-width: 100%;
+  min-height: 48px;
 }
 
 .field input[type='file']:hover:not(:disabled) {
@@ -903,6 +946,7 @@ h1 {
 .file-meta strong {
   display: block;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .file-meta span {
@@ -1099,11 +1143,13 @@ h1 {
 .issue p {
   margin: 6px 0;
   color: #475569;
+  overflow-wrap: anywhere;
 }
 
 .issue-location {
   font-size: 12px;
   color: #94a3b8;
+  overflow-wrap: anywhere;
 }
 
 .result {
@@ -1323,6 +1369,41 @@ h1 {
   }
 }
 
+/* Tablet and phone: thumb-reachable gate, including iPad portrait and landscape */
+@media (max-width: 1200px) {
+  .desktop-run {
+    display: none;
+  }
+
+  .mobile-run-bar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding: 10px max(14px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left));
+    background: rgba(238, 242, 246, 0.94);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid #d0d7e2;
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
+  }
+
+  .mobile-run-bar .primary {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 14px;
+  }
+
+  .page {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .panel {
+    min-height: 0;
+  }
+}
+
 /* Tablet */
 @media (max-width: 960px) {
   .guide-steps {
@@ -1331,6 +1412,10 @@ h1 {
 
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .context-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1345,32 +1430,8 @@ h1 {
     flex-direction: column;
   }
 
-  .desktop-run {
-    display: none;
-  }
-
-  .mobile-run-bar {
-    display: block;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 40;
-    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
-    background: rgba(238, 242, 246, 0.92);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid #d0d7e2;
-    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
-  }
-
-  .mobile-run-bar .primary {
-    width: 100%;
-    min-height: 48px;
-    border-radius: 14px;
-  }
-
   .page {
-    padding: 18px 14px calc(96px + env(safe-area-inset-bottom, 0px));
+    padding: 18px max(14px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left));
     gap: 16px;
   }
 
@@ -1387,16 +1448,46 @@ h1 {
     padding: 14px;
   }
 
-  .workflow-strip {
-    font-size: 11px;
-    gap: 6px 8px;
-  }
-
   .export-row .secondary {
-    flex: 1 1 calc(50% - 10px);
+    flex: 1 1 100%;
     text-align: center;
     justify-content: center;
-    min-height: 42px;
+    min-height: 44px;
+    white-space: normal;
+  }
+
+  .demo-button {
+    flex: 1 1 100%;
+    min-height: 48px;
+  }
+
+  .file-meta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chip {
+    min-height: 44px;
+  }
+
+  .context-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-arrow {
+    display: none;
+  }
+
+  .workflow-strip {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .field input[type='file'],
+  .config-upload input[type='file'] {
+    font-size: 16px;
   }
 
   .summary-meta div {
