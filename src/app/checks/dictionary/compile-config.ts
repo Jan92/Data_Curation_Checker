@@ -3,9 +3,11 @@
  *
  * Categories become entities (one CSV table each). Field names keep the
  * trimmed dictionary spelling, because study extracts usually use those
- * headers. Numeric windows become `min` / `max`. Enumerated cells become
- * allowable values, including a leading code (`P2` from `P2 - Negative`) and
- * slash synonyms. Prose placeholders are not turned into a code list.
+ * headers. Numeric windows become `min` / `max`. Year windows on date fields
+ * become `yearFrom` / `yearTo`. A stated null policy becomes `allowNull`.
+ * Enumerated cells become allowable values, including a leading code
+ * (`P2` from `P2 - Negative`) and slash synonyms. Prose placeholders are not
+ * turned into a code list.
  *
  * An explicit empty `primaryKeys` array means "no key was declared". The
  * tabular checker must not invent one from the first required column, or a
@@ -119,6 +121,8 @@ function toFieldRule(field: DictionaryField): EntityFieldRule {
 
   const units = field.units.trim();
   if (units && !isBlankMarker(units)) rule.units = units;
+  if (field.acceptsNull === true) rule.allowNull = true;
+  if (field.acceptsNull === false) rule.allowNull = false;
 
   const length = /\b(?:var\s*char|char)\s*\(\s*(\d+)\s*\)/i.exec(field.format);
   if (length) rule.maxLength = Number(length[1]);
@@ -126,6 +130,11 @@ function toFieldRule(field: DictionaryField): EntityFieldRule {
   if (dataType === 'date') {
     const declared = declaredDatePattern(field.format);
     if (declared) rule.dateTimePattern = declared.patternKey;
+    const years = field.acceptable.yearSpan;
+    if (years) {
+      rule.yearFrom = years.from;
+      if (!years.openEnded && years.to != null) rule.yearTo = years.to;
+    }
   }
 
   const range = effectiveRange(field);

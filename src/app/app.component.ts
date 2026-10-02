@@ -14,7 +14,6 @@ import {
   fetchTextAsset,
   fetchBinaryAsset,
   runDictionaryWorkbookCheck,
-  compileDictionaryWorkbook,
   isExcelWorkbookName,
   type CheckResult,
   type CheckIssue,
@@ -23,6 +22,7 @@ import {
   type GateStatus,
   type ValidationMode,
   type ValidationConfig,
+  type DatasetRunContext,
   type RecordValidationResult,
   type EffectiveConfigRef,
   type DccPreset
@@ -129,6 +129,8 @@ export class AppComponent {
   guideOpen = true;
   /** Compiled schema from the last Excel dictionary run or config upload. */
   dictionaryReady: ValidationConfig | null = null;
+  /** True once that schema is the active validation config. */
+  dictionaryAdopted = false;
 
   constructor() {
     this.restoreRunContext();
@@ -197,6 +199,22 @@ export class AppComponent {
     return Boolean(this.selectedFile || this.inputText.trim());
   }
 
+  get pastePlaceholder(): string {
+    const tables = this.activeConfig.dictionarySource ? this.activeConfig.expectedFiles ?? [] : [];
+    if (tables.length) {
+      return `Paste one CSV, or a JSON map of ${tables.join(', ')} to CSV text. Headers must match the dictionary.`;
+    }
+    return 'Paste FHIR Bundle/array/resource/NDJSON, or a SHIELD multi-CSV package JSON…';
+  }
+
+  get dictionaryStatusText(): string {
+    const tables = this.dictionaryReady?.expectedFiles?.join(', ') || 'the category tables';
+    if (!this.dictionaryAdopted) {
+      return `Dictionary compiled (${tables}). Use it as the validation config, then paste or upload the extract.`;
+    }
+    return `This dictionary is the active config. Next dataset: ${tables}, as CSV or a JSON map of those names to CSV text.`;
+  }
+
   get isProcessing(): boolean {
     return this.isLoading || this.isLoadingPreset;
   }
@@ -259,6 +277,8 @@ export class AppComponent {
       }
 
       this.applyPresetDefaults(preset);
+      this.dictionaryReady = null;
+      this.dictionaryAdopted = false;
 
       if (options.loadSample) {
         await this.loadPresetSample(preset);
@@ -333,15 +353,15 @@ export class AppComponent {
   }
 
   clearFile(): void {
+    const keepDictionary = this.dictionaryReady != null;
     this.selectedFile = null;
     this.selectedFileName = '';
     this.selectedFileSize = '';
     this.validationError = null;
-    this.dictionaryReady = null;
     if (this.fileInput?.nativeElement) {
       this.fileInput.nativeElement.value = '';
     }
-    this.clearResults();
+    if (!keepDictionary) this.clearResults();
   }
 
   clearResults(): void {
@@ -365,14 +385,24 @@ export class AppComponent {
     try {
       if (isExcelWorkbookName(file.name)) {
         const bytes = new Uint8Array(await file.arrayBuffer());
-        const compiled = compileDictionaryWorkbook(bytes, file.name);
-        this.dictionaryReady = compiled.config;
-        this.setActiveConfig(compiled.config, file.name);
-        this.selectedPresetId = '';
-        if (compiled.config.dictionaryRef) this.dictionaryRef = compiled.config.dictionaryRef;
-        this.clearResults();
+        const report = runDictionaryWorkbookCheck(bytes, file.name, {
+          source: 'File',
+          sourceDetail: file.name,
+          runContext: { ...this.buildRunContext(file.name), schemaVersion: undefined }
+        });
+        const snapshot = report.config.snapshot;
+        if (snapshot.id !== 'unparsed-dictionary') {
+          this.dictionaryReady = snapshot;
+          this.dictionaryAdopted = true;
+          this.setActiveConfig(snapshot, file.name);
+          this.selectedPresetId = '';
+          if (snapshot.dictionaryRef) this.dictionaryRef = snapshot.dictionaryRef;
+        }
+        this.publishReport(report);
         return;
       }
+      this.dictionaryReady = null;
+      this.dictionaryAdopted = false;
       const parsed = loadAndValidateConfigText(await file.text(), file.name);
       this.setActiveConfig(parsed, file.name);
       this.selectedPresetId = '';
@@ -390,6 +420,7 @@ export class AppComponent {
     this.configLoadError = null;
     this.selectedPresetId = 'fhir-lab-v1';
     this.dictionaryReady = null;
+    this.dictionaryAdopted = false;
     if (this.configInput?.nativeElement) {
       this.configInput.nativeElement.value = '';
     }
@@ -454,8 +485,13 @@ export class AppComponent {
     if (!this.dictionaryReady) return;
     this.setActiveConfig(this.dictionaryReady, this.dictionaryReady.dictionarySource?.fileName ?? this.dictionaryReady.name);
     this.selectedPresetId = '';
+    this.dictionaryAdopted = true;
     if (this.dictionaryReady.dictionaryRef) this.dictionaryRef = this.dictionaryReady.dictionaryRef;
     this.configLoadError = null;
+    this.selectedFile = null;
+    this.selectedFileName = '';
+    this.selectedFileSize = '';
+    if (this.fileInput?.nativeElement) this.fileInput.nativeElement.value = '';
   }
 
   downloadCompiledDictionary(): void {
@@ -474,7 +510,6 @@ export class AppComponent {
 
     this.isLoading = true;
     this.validationError = null;
-    this.dictionaryReady = null;
     this.checkResults = [];
     this.issues = [];
     this.gate = null;
@@ -483,20 +518,9 @@ export class AppComponent {
 
     try {
       const source = this.selectedFile ? 'File' : 'Text';
-      const runContext = {
-        datasetId: this.datasetId.trim() || this.selectedFileName || 'interactive-dataset',
-        sourceSite: this.sourceSite.trim() || 'local',
-        timeframe: this.timeframe.trim() || undefined,
-        mode: this.runMode,
-        inputFiles: this.selectedFileName ? [this.selectedFileName] : [],
-        license: this.licenseField.trim() || undefined,
-        provenance: this.provenance.trim() || undefined,
-        studyId: this.studyId.trim() || this.activeConfig.studyId,
-        dictionaryRef: this.dictionaryRef.trim() || this.activeConfig.dictionaryRef,
-        schemaVersion: this.effectiveConfig.version
-      };
-
       const workbook = Boolean(this.selectedFile && isExcelWorkbookName(this.selectedFileName));
+      const runContext = this.buildRunContext(this.selectedFileName);
+      if (workbook) runContext.schemaVersion = undefined;
       let report: DccRunReport;
       if (!workbook) {
         const content = this.selectedFile ? await this.selectedFile.text() : this.inputText;
@@ -518,23 +542,11 @@ export class AppComponent {
             runContext
           }
         );
+        this.dictionaryAdopted = false;
+        this.dictionaryReady = report.parseResult.ok ? report.config.snapshot : null;
       }
 
-      this.lastRunReport = report;
-      this.gate = report.gate;
-      this.lastParsedType = report.parseResult.type;
-      if (workbook && report.parseResult.ok) {
-        this.dictionaryReady = report.config.snapshot;
-      }
-      this.issues = report.issues;
-      this.checkResults = report.checkResults;
-      this.resultTab = 'summary';
-      this.issueFilter = 'all';
-      this.refreshIssueViews();
-      this.persistRunContext();
-      queueMicrotask(() => {
-        document.getElementById('gate-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      this.publishReport(report);
     } catch (error) {
       this.handleValidationError(error);
     } finally {
@@ -606,6 +618,36 @@ export class AppComponent {
     if (defaults.dictionaryRef) this.dictionaryRef = defaults.dictionaryRef;
     if (defaults.license) this.licenseField = defaults.license;
     if (defaults.provenance) this.provenance = defaults.provenance;
+  }
+
+  private buildRunContext(fileName: string): DatasetRunContext {
+    return {
+      datasetId: this.datasetId.trim() || fileName || 'interactive-dataset',
+      sourceSite: this.sourceSite.trim() || 'local',
+      timeframe: this.timeframe.trim() || undefined,
+      mode: this.runMode,
+      inputFiles: fileName ? [fileName] : [],
+      license: this.licenseField.trim() || undefined,
+      provenance: this.provenance.trim() || undefined,
+      studyId: this.studyId.trim() || this.activeConfig.studyId,
+      dictionaryRef: this.dictionaryRef.trim() || this.activeConfig.dictionaryRef,
+      schemaVersion: this.effectiveConfig.version
+    };
+  }
+
+  private publishReport(report: DccRunReport): void {
+    this.lastRunReport = report;
+    this.gate = report.gate;
+    this.lastParsedType = report.parseResult.type;
+    this.issues = report.issues;
+    this.checkResults = report.checkResults;
+    this.resultTab = 'summary';
+    this.issueFilter = 'all';
+    this.refreshIssueViews();
+    this.persistRunContext();
+    queueMicrotask(() => {
+      document.getElementById('gate-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   private setActiveConfig(config: ValidationConfig, sourceLabel: string): void {

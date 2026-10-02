@@ -6,8 +6,9 @@
  * - a single CSV matching one entity table, or
  * - a JSON object mapping table file names → CSV text (multi-file package).
  *
- * Checks cover: expected files/columns, required fields, value types & formats,
- * controlled vocabularies, primary keys, and cross-file references.
+ * Checks cover: expected files/columns, required fields, null policy, value
+ * types and formats, year windows, controlled vocabularies, primary keys, and
+ * cross-file references.
  */
 
 import type { CheckIssue } from '../types';
@@ -265,6 +266,11 @@ function isDateType(dataType: string | undefined): boolean {
   return t === 'date' || t === 'datetime';
 }
 
+function isBooleanType(dataType: string | undefined): boolean {
+  const t = dataType?.toLowerCase() ?? '';
+  return t === 'boolean' || t === 'bool';
+}
+
 function validateDataType(
   value: string,
   dataType: string | undefined,
@@ -305,7 +311,7 @@ function validateDataType(
     }
   }
   if (t === 'boolean' || t === 'bool') {
-    if (!/^(true|false|0|1|yes|no)$/i.test(value)) {
+    if (!/^(true|false|0|1|yes|no|y|n)$/i.test(value)) {
       return issue({
         severity: 'error',
         label: 'Invalid boolean',
@@ -337,6 +343,18 @@ function validateDataType(
     }
   }
   return null;
+}
+
+/** Year from a date that already matched a known pattern. */
+function yearInDate(value: string): number | null {
+  const iso = /^(\d{4})-\d{2}-\d{2}/.exec(value);
+  if (iso) return Number(iso[1]);
+  const dmy = /^\d{1,2}[-/]\d{1,2}[-/](\d{4})$/.exec(value);
+  return dmy ? Number(dmy[1]) : null;
+}
+
+function isBooleanValue(value: string): boolean {
+  return /^(true|false|0|1|yes|no|y|n)$/i.test(value);
 }
 
 /** Case-insensitive membership. Dictionary extracts often differ only by case. */
@@ -478,6 +496,22 @@ export function runTabularDictionaryChecks(
     const optional = entity.optionalFields ?? (entity.fields ?? []).filter((f) => !f.required).map((f) => f.name);
     const declared = new Set([...required, ...optional, ...(entity.fields ?? []).map((f) => f.name)]);
 
+    for (const rule of entity.fields ?? []) {
+      if (rule.allowNull !== false || headerSet.has(rule.name) || required.includes(rule.name)) continue;
+      issues.push(
+        issue({
+          severity: 'warn',
+          label: 'Column that forbids null is missing',
+          detail: `Table ${tableLabel} has no column "${rule.name}", and the dictionary does not accept null for that field.`,
+          location: entity.name,
+          category: 'completeness',
+          code: 'NULL_NOT_ALLOWED',
+          field: rule.name,
+          suiteId: 'tabular-dictionary'
+        })
+      );
+    }
+
     for (const col of required) {
       if (!headerSet.has(col)) {
         missingColumns.push(`${entity.name}.${col}`);
@@ -524,6 +558,24 @@ export function runTabularDictionaryChecks(
       const rowId = pkFields.map((k) => row[k] ?? '').join('|') || String(rowIndex + 1);
       const location = `${entity.name}/row/${rowId}`;
 
+      for (const rule of entity.fields ?? []) {
+        if (rule.allowNull !== false || !headerSet.has(rule.name) || required.includes(rule.name)) continue;
+        if ((row[rule.name] ?? '').trim()) continue;
+        issues.push(
+          issue({
+            severity: 'warn',
+            label: 'Empty value where null is not accepted',
+            detail: `"${rule.name}" is empty, and the dictionary does not accept null.`,
+            location,
+            category: 'completeness',
+            code: 'NULL_NOT_ALLOWED',
+            field: rule.name,
+            rawValue: '',
+            suiteId: 'tabular-dictionary'
+          })
+        );
+      }
+
       for (const col of required) {
         if (!(row[col] ?? '').trim()) {
           issues.push(
@@ -548,6 +600,28 @@ export function runTabularDictionaryChecks(
 
         const dtIssue = validateDataType(value, rule.dataType, field, location, rule.dateTimePattern);
         if (dtIssue) issues.push(dtIssue);
+
+        if (!dtIssue && isDateType(rule.dataType) && (rule.yearFrom != null || rule.yearTo != null)) {
+          const year = yearInDate(value);
+          const tooEarly = year != null && rule.yearFrom != null && year < rule.yearFrom;
+          const tooLate = year != null && rule.yearTo != null && year > rule.yearTo;
+          if (tooEarly || tooLate) {
+            const end = rule.yearTo != null ? String(rule.yearTo) : 'present';
+            issues.push(
+              issue({
+                severity: rule.severity === 'warn' ? 'warn' : 'error',
+                label: 'Date outside declared years',
+                detail: `${field}="${value}" is outside the declared years ${rule.yearFrom ?? '…'}–${end}.`,
+                location,
+                category: 'datetime',
+                code: 'VALUE_OUTSIDE_RANGE',
+                field,
+                rawValue: value,
+                suiteId: 'tabular-dictionary'
+              })
+            );
+          }
+        }
 
         const numeric = /^-?\d+(?:\.\d+)?$/.test(value);
         const hasRange = rule.min != null || rule.max != null;
@@ -591,7 +665,8 @@ export function runTabularDictionaryChecks(
         // A numeric value governed by min/max is not also required to appear in
         // the code list. That list holds sentinels such as "Not Applicable".
         const rangedNumber = hasRange && numeric;
-        if (rule.allowableValues?.length && !rangedNumber && !allowableIncludes(rule.allowableValues, value)) {
+        const booleanSynonym = isBooleanType(rule.dataType) && isBooleanValue(value);
+        if (rule.allowableValues?.length && !rangedNumber && !booleanSynonym && !allowableIncludes(rule.allowableValues, value)) {
           issues.push(
             issue({
               severity: rule.severity === 'warn' ? 'warn' : 'error',

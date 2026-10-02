@@ -562,6 +562,7 @@ h1 {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  max-width: 100%;
 }
 
 .tab {
@@ -776,6 +777,10 @@ h1 {
   border-left: 3px solid #0c4a6e;
 }
 
+.dictionary-next .export-row {
+  margin-top: 10px;
+}
+
 .primary {
   border: none;
   border-radius: 999px;
@@ -841,6 +846,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 24px;
+  min-width: 0;
 }
 
 .panel {
@@ -852,6 +858,8 @@ h1 {
   flex-direction: column;
   gap: 16px;
   min-height: 420px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .panel h2 {

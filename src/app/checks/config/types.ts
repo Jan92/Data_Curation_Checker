@@ -43,6 +43,15 @@ export interface EntityFieldRule {
   maxLength?: number;
   /** Unit of measure copied from a data dictionary, when one was declared. */
   units?: string;
+  /**
+   * When `false`, an empty cell is a finding even if the field is optional.
+   * Omitted when the dictionary did not say whether null is accepted.
+   */
+  allowNull?: boolean;
+  /** First year accepted for a date field (`2015` from `2015-2018` or `2015-Present`). */
+  yearFrom?: number;
+  /** Last year accepted. Omitted when the window is open-ended (`2015-Present`). */
+  yearTo?: number;
 }
 
 export interface EntityRule {

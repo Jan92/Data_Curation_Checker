@@ -27,6 +27,7 @@
  * - `DICT_UNCODED_DOMAIN` — categorical field whose domain is prose
  * - `DICT_DUPLICATE_TOKEN` — the same code listed twice
  * - `DICT_OBSERVED_NOT_IN_DOMAIN` — existing value outside the acceptable set
+ * - `DICT_DEFAULT_NOT_IN_DOMAIN` — the default cell is outside the acceptable set
  * - `DICT_OBSERVED_OUTSIDE_RANGE` — existing numeric extent outside the window
  * - `DICT_DATE_ORDER_CONFLICT` — sample date cannot match the declared order
  * - `DICT_DATE_SEPARATOR` — sample uses `/` while the format uses `-`, or the reverse
@@ -443,7 +444,7 @@ function auditDomain(field: DictionaryField, location: string): CheckIssue[] {
       issues.push(
         finding({
           severity: 'warn',
-          code: 'DICT_OBSERVED_NOT_IN_DOMAIN',
+          code: 'DICT_DEFAULT_NOT_IN_DOMAIN',
           label: 'Default outside acceptable values',
           detail: `${field.name} default "${field.defaultValue}" is not in the acceptable list.`,
           location,
@@ -765,7 +766,8 @@ function suiteFor(code: string): string {
     code.startsWith('DICT_DATE') ||
     code.startsWith('DICT_COMPANION') ||
     code === 'DICT_UNCODED_DOMAIN' ||
-    code === 'DICT_DUPLICATE_TOKEN'
+    code === 'DICT_DUPLICATE_TOKEN' ||
+    code === 'DICT_DEFAULT_NOT_IN_DOMAIN'
   ) {
     return 'dictionary-domain';
   }
@@ -774,7 +776,12 @@ function suiteFor(code: string): string {
 
 function categoryFor(code: string): CheckIssue['category'] {
   if (code.startsWith('DICT_DATE')) return 'datetime';
-  if (code.startsWith('DICT_OBSERVED') || code.startsWith('DICT_COMPANION') || code === 'DICT_DUPLICATE_TOKEN') {
+  if (
+    code.startsWith('DICT_OBSERVED') ||
+    code.startsWith('DICT_COMPANION') ||
+    code === 'DICT_DUPLICATE_TOKEN' ||
+    code === 'DICT_DEFAULT_NOT_IN_DOMAIN'
+  ) {
     return 'vocabulary';
   }
   if (code === 'DICT_MISSING_DESCRIPTION' || code === 'DICT_UNBOUNDED_TEXT' || code === 'DICT_UNCODED_DOMAIN') {
