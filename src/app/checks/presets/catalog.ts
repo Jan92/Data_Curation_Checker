@@ -25,6 +25,11 @@ export interface DccPreset {
   configPath?: string;
   /** Optional sample dataset asset path (JSON / multi-CSV package). */
   samplePath?: string;
+  /**
+   * Built-in FHIR sample used when there is no asset file.
+   * `failed` is the chemistry panel planted so the laboratory gate fails.
+   */
+  builtinSample?: 'valid' | 'failed';
   /** Suggested run-context defaults when the preset is applied. */
   defaults?: {
     studyId?: string;
@@ -43,9 +48,22 @@ export const DCC_PRESETS: DccPreset[] = [
     label: 'FHIR Laboratory v1 (built-in)',
     description: 'Observation & DiagnosticReport syntactic / laboratory checks.',
     kind: 'fhir',
-    samplePath: undefined,
+    builtinSample: 'valid',
     defaults: {
       datasetId: 'fhir-lab-demo',
+      sourceSite: 'local-lab',
+      license: 'internal',
+      provenance: 'ui-demo'
+    }
+  },
+  {
+    id: 'fhir-lab-failed',
+    label: 'Laboratory failed',
+    description: 'Same laboratory checks on a chemistry panel planted to fail. Run the preset demo to see the FAIL gate.',
+    kind: 'fhir',
+    builtinSample: 'failed',
+    defaults: {
+      datasetId: 'fhir-lab-failure-demo',
       sourceSite: 'local-lab',
       license: 'internal',
       provenance: 'ui-demo'

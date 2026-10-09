@@ -187,7 +187,16 @@ export class AppComponent {
   }
 
   async downloadSelectedPresetSample(): Promise<void> {
-    const path = this.selectedPreset?.samplePath;
+    const preset = this.selectedPreset;
+    if (preset?.builtinSample === 'failed') {
+      downloadTextFile(
+        JSON.stringify(createFhirLabFailureShowcase(), null, 2),
+        'fhir-laboratory-failed.json',
+        mimeTypeForFileName('sample.json')
+      );
+      return;
+    }
+    const path = preset?.samplePath;
     if (!path) {
       this.downloadSampleFile();
       return;
@@ -287,6 +296,7 @@ export class AppComponent {
       if (options.loadSample) {
         await this.loadPresetSample(preset);
       } else {
+        this.sampleBrief = '';
         this.clearResults();
       }
 
@@ -310,11 +320,7 @@ export class AppComponent {
     this.isLoadingPreset = true;
     this.validationError = null;
     try {
-      if (preset.kind === 'fhir' || !preset.samplePath) {
-        this.loadValidFhirDemo();
-      } else {
-        await this.loadPresetSample(preset);
-      }
+      await this.loadPresetSample(preset);
     } catch (error) {
       this.validationError = this.toErrorMessage(error, 'Could not load sample dataset.');
     } finally {
@@ -453,19 +459,21 @@ export class AppComponent {
     this.clearFile();
     this.inputText = JSON.stringify(createRandomFhirExample(), null, 2);
     this.sampleBrief =
-      'A random laboratory example. It may pass, or it may fail only one or two checks. Use Failing lab panel for a fixed walkthrough.';
+      'A random laboratory example. It may pass, or it may fail only one or two checks. Choose Laboratory failed in the preset list for a fixed walkthrough.';
     this.clearResults();
   }
 
+  /** Select the failing laboratory preset, load its panel, and run the gate. */
+  showLabFailureDemo(): void {
+    this.selectedPresetId = 'fhir-lab-failed';
+    void this.runPresetDemo();
+  }
+
   /** Load the fixed chemistry panel that fails several laboratory check suites. */
-  loadLabFailureDemo(): void {
+  private loadLabFailureDemo(): void {
     this.clearFile();
     this.inputText = JSON.stringify(createFhirLabFailureShowcase(), null, 2);
     this.sampleBrief = FHIR_LAB_FAILURE_BRIEF;
-    this.datasetId = 'fhir-lab-failure-demo';
-    if (!this.sourceSite.trim()) this.sourceSite = 'local-lab';
-    if (!this.licenseField.trim()) this.licenseField = 'internal';
-    if (!this.provenance.trim()) this.provenance = 'ui-demo';
     this.clearResults();
   }
 
@@ -613,6 +621,11 @@ export class AppComponent {
   }
 
   private async loadPresetSample(preset: DccPreset): Promise<void> {
+    if (preset.builtinSample === 'failed') {
+      this.loadLabFailureDemo();
+      this.applyPresetDefaults(preset);
+      return;
+    }
     if (!preset.samplePath) {
       this.loadValidFhirDemo();
       return;

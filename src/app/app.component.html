@@ -333,11 +333,11 @@
         <button
           class="demo-button"
           type="button"
-          (click)="loadLabFailureDemo()"
+          (click)="showLabFailureDemo()"
           [disabled]="isProcessing"
-          aria-label="Load a laboratory panel where several checks fail"
+          aria-label="Load the Laboratory failed preset and run the quality gate"
         >
-          Failing lab panel
+          Laboratory failed
         </button>
         <button
           class="demo-button secondary-demo"
@@ -368,7 +368,7 @@
         </button>
         <p class="demo-brief" *ngIf="sampleBrief">{{ sampleBrief }}</p>
         <p class="demo-hint">
-          Preset sample follows the dropdown above. Failing lab panel is the fixed chemistry walkthrough.
+          Preset sample follows the dropdown above. Laboratory failed is the chemistry panel that fails the gate.
         </p>
       </div>
 
