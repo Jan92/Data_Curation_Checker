@@ -92,6 +92,7 @@ export class AppComponent {
   readonly presets: DccPreset[] = DCC_PRESETS;
   readonly fhirPresets = DCC_PRESETS.filter((p) => p.kind === 'fhir');
   readonly shieldPresets = DCC_PRESETS.filter((p) => p.kind === 'shield');
+  readonly searchPresets = DCC_PRESETS.filter((p) => p.kind === 'search');
   readonly repoUrl = 'https://github.com/Jan92/Data_Curation_Checker';
 
   activeConfig: ValidationConfig = DEFAULT_FHIR_LAB_CONFIG;
@@ -466,6 +467,12 @@ export class AppComponent {
   /** Select the failing laboratory preset, load its panel, and run the gate. */
   showLabFailureDemo(): void {
     this.selectedPresetId = 'fhir-lab-failed';
+    void this.runPresetDemo();
+  }
+
+  /** Select the SEARCH codification preset, load the planted export, and run the gate. */
+  showSearchCodificationDemo(): void {
+    this.selectedPresetId = 'search-codification-v2';
     void this.runPresetDemo();
   }
 

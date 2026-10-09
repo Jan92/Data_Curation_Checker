@@ -108,6 +108,11 @@ export const BUILTIN_PLUGINS: BuiltinPlugin[] = [
     id: 'reproducibility',
     description: 'Config hash, tool version, deterministic run metadata',
     category: 'reproducibility'
+  },
+  {
+    id: 'search-qc',
+    description: 'SEARCH Common Codification QC-01 to QC-40 for a curated tabular export',
+    category: 'policy'
   }
 ];
 

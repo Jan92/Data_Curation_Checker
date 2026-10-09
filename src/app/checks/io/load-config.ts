@@ -151,8 +151,8 @@ function parseBool(value: string): boolean {
   return v === 'true' || v === '1' || v === 'yes' || v === 'y';
 }
 
-/** Minimal RFC4180-ish CSV parser (quoted fields, commas, newlines). */
-export function parseCsvRows(text: string): string[][] {
+/** Minimal RFC4180-ish CSV parser (quoted fields, commas or a chosen delimiter, newlines). */
+export function parseCsvRows(text: string, delimiter = ','): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -177,7 +177,7 @@ export function parseCsvRows(text: string): string[][] {
       inQuotes = true;
       continue;
     }
-    if (ch === ',') {
+    if (ch === delimiter) {
       row.push(field);
       field = '';
       continue;

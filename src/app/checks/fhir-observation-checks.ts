@@ -16,6 +16,7 @@ import {
   runTabularDictionaryChecks
 } from './pipeline/tabular-dictionary';
 import { runReproducibilityChecks } from './pipeline/reproducibility';
+import { runSearchCodificationCheck } from './search/run-search-qc';
 import { summarizeSuite, suiteToCheckResult, OBSERVATION_VALUE_KEYS } from './pipeline/helpers';
 import type {
   CheckResult,
@@ -3142,9 +3143,9 @@ export function validateFhirObservations(content: string, options?: ValidateOpti
  * Full DCC quality-gate entry point (shared by Angular UI and Node CLI).
  *
  * Routing:
- * 1. If the active config looks study/CSV-oriented and the payload is CSV or a
- *    multi-CSV JSON package → tabular dictionary suites.
- * 2. Otherwise → FHIR Observation / DiagnosticReport parse + check pipeline.
+ * 1. SEARCH codification config → QC-01 to QC-40 on a curated CSV export.
+ * 2. Study/CSV config and a CSV or multi-CSV package → tabular dictionary suites.
+ * 3. Otherwise → FHIR Observation / DiagnosticReport parse + check pipeline.
  *
  * Always returns a `DccRunReport` with gate status, suite breakdown, and
  * record-level findings suitable for audit export (JSON / MD / HTML).
@@ -3165,6 +3166,10 @@ export function runDataCurationCheck(content: string, options?: ValidateOptions)
           ? [sourceDetail]
           : []
   });
+
+  if (config.snapshot.searchCodification) {
+    return runSearchCodificationCheck(content, config, runContext, source);
+  }
 
   // Dictionary-driven tabular / study dataset path
   if (isTabularDatasetInput(content, config.snapshot)) {

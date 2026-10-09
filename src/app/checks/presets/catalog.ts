@@ -8,7 +8,7 @@
  * - SHIELD presets load dictionary JSON from `/configs/…` assets.
  */
 
-export type PresetKind = 'fhir' | 'shield';
+export type PresetKind = 'fhir' | 'shield' | 'search';
 
 export interface DccPreset {
   /** Stable preset id used by the UI select control. */
@@ -128,6 +128,23 @@ export const DCC_PRESETS: DccPreset[] = [
       studyId: 'SHIELD-OC-2025',
       dictionaryRef: 'Appendix 11 — SHIELD-OC-2025 data dictionary V3',
       datasetId: 'SHIELD-OC-2025-refresh-demo-v3',
+      sourceSite: 'local-lab',
+      license: 'internal',
+      provenance: 'ui-demo'
+    }
+  },
+  {
+    id: 'search-codification-v2',
+    label: 'SEARCH codification v2',
+    description:
+      'QC-01 to QC-40 on a small curated export planted so the gate fails. Run the preset demo to see every codification rule.',
+    kind: 'search',
+    configPath: 'configs/search-codification-v2.json',
+    samplePath: 'configs/samples/search-codification-v2-failed.json',
+    defaults: {
+      studyId: 'SEARCH',
+      dictionaryRef: 'SEARCH Common Codification Guideline v2.0',
+      datasetId: 'search-codification-demo',
       sourceSite: 'local-lab',
       license: 'internal',
       provenance: 'ui-demo'

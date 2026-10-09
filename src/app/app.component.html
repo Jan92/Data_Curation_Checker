@@ -4,8 +4,8 @@
       <p class="brand-kicker">Data Curation Checker <span class="version-pill">v{{ toolVersion }}</span></p>
       <h1>Quality gate for curated datasets</h1>
       <p class="subtitle">
-        Validate FHIR laboratory resources, SHIELD study packages, or an Excel data dictionary
-        entirely in your browser. Same engine as the CLI — nothing is uploaded to a server.
+        Validate FHIR laboratory resources, a SEARCH codification export, SHIELD study packages,
+        or an Excel data dictionary entirely in your browser. Same engine as the CLI — nothing is uploaded to a server.
       </p>
       <div class="header-actions">
         <button
@@ -216,6 +216,9 @@
             <optgroup label="SHIELD study dictionaries">
               <option *ngFor="let p of shieldPresets; trackBy: trackByPreset" [value]="p.id">{{ p.label }}</option>
             </optgroup>
+            <optgroup label="SEARCH codification">
+              <option *ngFor="let p of searchPresets; trackBy: trackByPreset" [value]="p.id">{{ p.label }}</option>
+            </optgroup>
           </select>
           <small class="field-hint" *ngIf="selectedPreset">{{ selectedPreset.description }}</small>
         </label>
@@ -340,6 +343,15 @@
           Laboratory failed
         </button>
         <button
+          class="demo-button"
+          type="button"
+          (click)="showSearchCodificationDemo()"
+          [disabled]="isProcessing"
+          aria-label="Load the SEARCH codification preset and run the quality gate"
+        >
+          SEARCH codification
+        </button>
+        <button
           class="demo-button secondary-demo"
           type="button"
           (click)="loadSelectedPresetSample()"
@@ -368,7 +380,7 @@
         </button>
         <p class="demo-brief" *ngIf="sampleBrief">{{ sampleBrief }}</p>
         <p class="demo-hint">
-          Preset sample follows the dropdown above. Laboratory failed is the chemistry panel that fails the gate.
+          Preset sample follows the dropdown above. Laboratory failed is the chemistry panel that fails the gate. SEARCH codification runs QC-01 to QC-40 on a planted export.
         </p>
       </div>
 
