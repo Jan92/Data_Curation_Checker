@@ -1,4 +1,0 @@
-{
-  "DS01_subject_20260921.csv": "subject_id,dataset_id,age_at_index_years,sex,country_of_birth,body_height_cm,body_weight_kg,bmi_kg_m2,consent_given\nDS01-AAAA1111,DS01,44,female,DK,170,70,24.2,1\nDS01-BBBB2222,DS01,44,female,DK,170,70,24.2,1\nDS01-CCCC3333,DS01,44,female,DK,170,70,24.2,1\nDS01-DDDD4444,DS01,44,female,DK,170,70,24.2,1\nDS01-EEEE5555,DS01,44,female,DK,170,70,24.2,1\n",
-  "DS01_event_20260921.csv": "subject_id,event_id,event_type,day_from_index,site_code\nDS01-AAAA1111,1,cce,0,site_1\nDS01-BBBB2222,1,cce,0,site_1\nDS01-CCCC3333,1,cce,0,site_1\nDS01-DDDD4444,1,cce,0,site_1\nDS01-EEEE5555,1,cce,0,site_1\n"
-}

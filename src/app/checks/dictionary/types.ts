@@ -1,8 +1,8 @@
 /**
  * In-memory model of a study data-dictionary workbook.
  *
- * These workbooks (cervical / ovarian SEARCH dictionaries are the reference
- * shape, not a fixed schema) are field catalogues, not patient-level datasets.
+ * These workbooks (cervical and ovarian field catalogues are the reference
+ * shape, not a fixed schema) are field lists, not patient-level datasets.
  * A typical sheet has:
  *
  * - a category column, often merged down across a block of rows

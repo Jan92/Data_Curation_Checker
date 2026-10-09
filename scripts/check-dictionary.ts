@@ -30,8 +30,8 @@ function load(relativePath: string): Uint8Array {
 }
 
 function checkDemo(): void {
-  const fileName = 'search-dictionary-demo.xlsx';
-  const bytes = load('configs/samples/search-dictionary-demo.xlsx');
+  const fileName = 'dictionary-demo.xlsx';
+  const bytes = load('configs/samples/dictionary-demo.xlsx');
   const document = parseDataDictionary(bytes, fileName);
   assert(document.fields.length === 6, `demo field count ${document.fields.length}, expected 6`);
   assert(
@@ -63,8 +63,8 @@ function checkDemo(): void {
 }
 
 function checkClean(): void {
-  const fileName = 'search-dictionary-clean.xlsx';
-  const bytes = load('configs/samples/search-dictionary-clean.xlsx');
+  const fileName = 'dictionary-clean.xlsx';
+  const bytes = load('configs/samples/dictionary-clean.xlsx');
   const report = runDictionaryWorkbookCheck(bytes, fileName, {
     runContext: { datasetId: 'clean', sourceSite: 'fixture', mode: 'batch', inputFiles: [fileName] }
   });

@@ -1,20 +1,20 @@
 {
-  "id": "search-codification-v2",
+  "id": "common-codification-v2",
   "version": "2.0",
-  "name": "SEARCH Common Codification v2.0",
-  "description": "QC-01 to QC-40 for a curated SEARCH tabular export (CSV). Compiled from the codification framework without partner mappings or the issues log.",
+  "name": "Common Codification v2.0",
+  "description": "QC-01 to QC-40 for a curated tabular export (CSV). Compiled from the codification framework without partner mappings or the issues log.",
   "formats": [
     "csv",
-    "search-package"
+    "codification-package"
   ],
-  "studyId": "SEARCH",
-  "dictionaryRef": "SEARCH Common Codification Guideline v2.0",
+  "studyId": "CC-V2",
+  "dictionaryRef": "Common Codification Guideline v2.0",
   "metadataRequirements": [
     "license",
     "provenance"
   ],
   "plugins": [
-    "search-qc",
+    "codification-qc",
     "metadata-requirements",
     "reproducibility"
   ],
@@ -24,7 +24,7 @@
     {
       "name": "subject",
       "table": "subject.csv",
-      "description": "SEARCH subject table",
+      "description": "subject table",
       "fields": [
         {
           "name": "subject_id",
@@ -35,7 +35,7 @@
     {
       "name": "event",
       "table": "event.csv",
-      "description": "SEARCH event table",
+      "description": "event table",
       "fields": [
         {
           "name": "subject_id",
@@ -46,7 +46,7 @@
     {
       "name": "lesion",
       "table": "lesion.csv",
-      "description": "SEARCH lesion table",
+      "description": "lesion table",
       "fields": [
         {
           "name": "subject_id",
@@ -57,7 +57,7 @@
     {
       "name": "specimen",
       "table": "specimen.csv",
-      "description": "SEARCH specimen table",
+      "description": "specimen table",
       "fields": [
         {
           "name": "subject_id",
@@ -68,7 +68,7 @@
     {
       "name": "treatment",
       "table": "treatment.csv",
-      "description": "SEARCH treatment table",
+      "description": "treatment table",
       "fields": [
         {
           "name": "subject_id",
@@ -79,7 +79,7 @@
     {
       "name": "questionnaire",
       "table": "questionnaire.csv",
-      "description": "SEARCH questionnaire table",
+      "description": "questionnaire table",
       "fields": [
         {
           "name": "subject_id",
@@ -90,7 +90,7 @@
     {
       "name": "annotation",
       "table": "annotation.csv",
-      "description": "SEARCH annotation table",
+      "description": "annotation table",
       "fields": [
         {
           "name": "subject_id",
@@ -101,7 +101,7 @@
     {
       "name": "image",
       "table": "image.csv",
-      "description": "SEARCH image table",
+      "description": "image table",
       "fields": [
         {
           "name": "subject_id",
@@ -110,7 +110,7 @@
       ]
     }
   ],
-  "searchCodification": {
+  "codification": {
     "tables": [
       "subject",
       "event",
@@ -148,7 +148,7 @@
     "dayOffsetMax": 7300,
     "cdes": [
       {
-        "id": "SEARCH-ID-001",
+        "id": "CDE-ID-001",
         "variable": "subject_id",
         "domain": "ID",
         "table": "all",
@@ -158,7 +158,7 @@
         "range": "Pattern DSnn-[A-Z0-9]{8}"
       },
       {
-        "id": "SEARCH-ID-002",
+        "id": "CDE-ID-002",
         "variable": "dataset_id",
         "domain": "ID",
         "table": "all",
@@ -168,7 +168,7 @@
         "range": "DS01-DS11"
       },
       {
-        "id": "SEARCH-ID-003",
+        "id": "CDE-ID-003",
         "variable": "site_code",
         "domain": "ID",
         "table": "event",
@@ -178,7 +178,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ID-004",
+        "id": "CDE-ID-004",
         "variable": "event_id",
         "domain": "ID",
         "table": "event",
@@ -188,7 +188,7 @@
         "range": ">= 1"
       },
       {
-        "id": "SEARCH-ID-005",
+        "id": "CDE-ID-005",
         "variable": "event_type",
         "domain": "ID",
         "table": "event",
@@ -198,7 +198,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ID-006",
+        "id": "CDE-ID-006",
         "variable": "day_from_index",
         "domain": "ID",
         "table": "event; lesion; specimen; questionnaire",
@@ -208,7 +208,7 @@
         "range": "-3650 to 7300"
       },
       {
-        "id": "SEARCH-ID-007",
+        "id": "CDE-ID-007",
         "variable": "lesion_id",
         "domain": "ID",
         "table": "lesion; specimen",
@@ -218,7 +218,7 @@
         "range": ">= 1"
       },
       {
-        "id": "SEARCH-ID-008",
+        "id": "CDE-ID-008",
         "variable": "image_id",
         "domain": "ID",
         "table": "image",
@@ -228,7 +228,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ID-009",
+        "id": "CDE-ID-009",
         "variable": "specimen_id",
         "domain": "ID",
         "table": "specimen",
@@ -238,7 +238,7 @@
         "range": ">= 1"
       },
       {
-        "id": "SEARCH-ID-010",
+        "id": "CDE-ID-010",
         "variable": "treatment_id",
         "domain": "ID",
         "table": "treatment",
@@ -248,7 +248,7 @@
         "range": ">= 1"
       },
       {
-        "id": "SEARCH-ID-011",
+        "id": "CDE-ID-011",
         "variable": "questionnaire_id",
         "domain": "ID",
         "table": "questionnaire",
@@ -258,7 +258,7 @@
         "range": ">= 1"
       },
       {
-        "id": "SEARCH-ID-012",
+        "id": "CDE-ID-012",
         "variable": "annotation_id",
         "domain": "ID",
         "table": "annotation",
@@ -268,7 +268,7 @@
         "range": ">= 1"
       },
       {
-        "id": "SEARCH-DEM-001",
+        "id": "CDE-DEM-001",
         "variable": "age_at_index_years",
         "domain": "DEM",
         "table": "subject",
@@ -278,7 +278,7 @@
         "range": "0-120 (dataset-specific ranges in 10_QC_Rules)"
       },
       {
-        "id": "SEARCH-DEM-002",
+        "id": "CDE-DEM-002",
         "variable": "sex",
         "domain": "DEM",
         "table": "subject",
@@ -288,7 +288,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-DEM-003",
+        "id": "CDE-DEM-003",
         "variable": "marital_status",
         "domain": "DEM",
         "table": "subject",
@@ -298,7 +298,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-DEM-004",
+        "id": "CDE-DEM-004",
         "variable": "education_level_isced",
         "domain": "DEM",
         "table": "subject",
@@ -308,7 +308,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-DEM-005",
+        "id": "CDE-DEM-005",
         "variable": "household_income_band_dkk",
         "domain": "DEM",
         "table": "subject",
@@ -318,7 +318,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-DEM-006",
+        "id": "CDE-DEM-006",
         "variable": "country_of_birth",
         "domain": "DEM",
         "table": "subject",
@@ -328,7 +328,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-DEM-007",
+        "id": "CDE-DEM-007",
         "variable": "cultural_background",
         "domain": "DEM",
         "table": "subject",
@@ -338,7 +338,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ANT-001",
+        "id": "CDE-ANT-001",
         "variable": "body_height_cm",
         "domain": "ANT",
         "table": "subject",
@@ -348,7 +348,7 @@
         "range": "100-250"
       },
       {
-        "id": "SEARCH-ANT-002",
+        "id": "CDE-ANT-002",
         "variable": "body_weight_kg",
         "domain": "ANT",
         "table": "subject",
@@ -358,7 +358,7 @@
         "range": "30-250"
       },
       {
-        "id": "SEARCH-ANT-003",
+        "id": "CDE-ANT-003",
         "variable": "bmi_kg_m2",
         "domain": "ANT",
         "table": "subject",
@@ -368,7 +368,7 @@
         "range": "12-70"
       },
       {
-        "id": "SEARCH-ANT-004",
+        "id": "CDE-ANT-004",
         "variable": "body_surface_area_m2",
         "domain": "ANT",
         "table": "event",
@@ -378,7 +378,7 @@
         "range": "1.0-3.0"
       },
       {
-        "id": "SEARCH-ANT-005",
+        "id": "CDE-ANT-005",
         "variable": "heart_rate_bpm",
         "domain": "ANT",
         "table": "event",
@@ -388,7 +388,7 @@
         "range": "30-200"
       },
       {
-        "id": "SEARCH-LIF-001",
+        "id": "CDE-LIF-001",
         "variable": "tobacco_smoking_status",
         "domain": "LIF",
         "table": "subject",
@@ -398,7 +398,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-LIF-002",
+        "id": "CDE-LIF-002",
         "variable": "tobacco_units_per_day",
         "domain": "LIF",
         "table": "subject",
@@ -408,7 +408,7 @@
         "range": "0-100"
       },
       {
-        "id": "SEARCH-LIF-003",
+        "id": "CDE-LIF-003",
         "variable": "ecigarette_use",
         "domain": "LIF",
         "table": "subject",
@@ -418,7 +418,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-LIF-004",
+        "id": "CDE-LIF-004",
         "variable": "alcohol_use",
         "domain": "LIF",
         "table": "subject",
@@ -428,7 +428,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-LIF-005",
+        "id": "CDE-LIF-005",
         "variable": "alcohol_units_per_week_band",
         "domain": "LIF",
         "table": "subject",
@@ -438,7 +438,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-LIF-006",
+        "id": "CDE-LIF-006",
         "variable": "physical_activity_level",
         "domain": "LIF",
         "table": "subject",
@@ -448,7 +448,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-LIF-007",
+        "id": "CDE-LIF-007",
         "variable": "coffee_cups_per_day_band",
         "domain": "LIF",
         "table": "subject",
@@ -458,7 +458,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-LIF-008",
+        "id": "CDE-LIF-008",
         "variable": "sleep_hours_band",
         "domain": "LIF",
         "table": "subject",
@@ -468,7 +468,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-LIF-009",
+        "id": "CDE-LIF-009",
         "variable": "regular_sleep_pattern",
         "domain": "LIF",
         "table": "subject",
@@ -478,7 +478,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-LIF-010",
+        "id": "CDE-LIF-010",
         "variable": "usual_wake_time_weekday",
         "domain": "LIF",
         "table": "questionnaire",
@@ -488,7 +488,7 @@
         "range": "00:00-23:59"
       },
       {
-        "id": "SEARCH-LIF-011",
+        "id": "CDE-LIF-011",
         "variable": "wake_time_exam_day",
         "domain": "LIF",
         "table": "questionnaire",
@@ -498,7 +498,7 @@
         "range": "00:00-23:59"
       },
       {
-        "id": "SEARCH-HIS-001",
+        "id": "CDE-HIS-001",
         "variable": "menopausal_status",
         "domain": "HIS",
         "table": "subject",
@@ -508,7 +508,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-002",
+        "id": "CDE-HIS-002",
         "variable": "previous_malignancy",
         "domain": "HIS",
         "table": "subject",
@@ -518,7 +518,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-003",
+        "id": "CDE-HIS-003",
         "variable": "family_history_cancer",
         "domain": "HIS",
         "table": "subject",
@@ -528,7 +528,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-004",
+        "id": "CDE-HIS-004",
         "variable": "allergy_present",
         "domain": "HIS",
         "table": "subject",
@@ -538,7 +538,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-005",
+        "id": "CDE-HIS-005",
         "variable": "ecog_performance_status",
         "domain": "HIS",
         "table": "subject",
@@ -548,7 +548,7 @@
         "range": "0-5"
       },
       {
-        "id": "SEARCH-HIS-006",
+        "id": "CDE-HIS-006",
         "variable": "atrial_fibrillation",
         "domain": "HIS",
         "table": "subject",
@@ -558,7 +558,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-007",
+        "id": "CDE-HIS-007",
         "variable": "previous_stool_screening_test",
         "domain": "HIS",
         "table": "subject",
@@ -568,7 +568,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-008",
+        "id": "CDE-HIS-008",
         "variable": "previous_colonoscopy",
         "domain": "HIS",
         "table": "subject",
@@ -578,7 +578,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-009",
+        "id": "CDE-HIS-009",
         "variable": "clinical_trial_participation",
         "domain": "HIS",
         "table": "subject",
@@ -588,7 +588,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-010",
+        "id": "CDE-HIS-010",
         "variable": "medical_history_text",
         "domain": "HIS",
         "table": "subject",
@@ -598,7 +598,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-011",
+        "id": "CDE-HIS-011",
         "variable": "family_history_cancer_text",
         "domain": "HIS",
         "table": "subject",
@@ -608,7 +608,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-012",
+        "id": "CDE-HIS-012",
         "variable": "allergy_text",
         "domain": "HIS",
         "table": "subject",
@@ -618,7 +618,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-HIS-013",
+        "id": "CDE-HIS-013",
         "variable": "usual_stool_bristol_type_{1-7}",
         "domain": "HIS",
         "table": "questionnaire",
@@ -628,7 +628,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-LAB-001",
+        "id": "CDE-LAB-001",
         "variable": "ca125_u_ml",
         "domain": "LAB",
         "table": "subject",
@@ -638,7 +638,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-LAB-002",
+        "id": "CDE-LAB-002",
         "variable": "he4_pmol_l",
         "domain": "LAB",
         "table": "subject",
@@ -648,7 +648,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-LAB-003",
+        "id": "CDE-LAB-003",
         "variable": "wbcჩl",
         "domain": "LAB",
         "table": "subject",
@@ -658,7 +658,7 @@
         "range": "0.1-100"
       },
       {
-        "id": "SEARCH-LAB-004",
+        "id": "CDE-LAB-004",
         "variable": "neutrophilsჩl",
         "domain": "LAB",
         "table": "subject",
@@ -668,7 +668,7 @@
         "range": "0-50"
       },
       {
-        "id": "SEARCH-LAB-005",
+        "id": "CDE-LAB-005",
         "variable": "lymphocytesჩl",
         "domain": "LAB",
         "table": "subject",
@@ -678,7 +678,7 @@
         "range": "0-50"
       },
       {
-        "id": "SEARCH-LAB-006",
+        "id": "CDE-LAB-006",
         "variable": "haemoglobin_g_dl",
         "domain": "LAB",
         "table": "subject",
@@ -688,7 +688,7 @@
         "range": "3-25"
       },
       {
-        "id": "SEARCH-LAB-007",
+        "id": "CDE-LAB-007",
         "variable": "haematocrit_fraction",
         "domain": "LAB",
         "table": "subject",
@@ -698,7 +698,7 @@
         "range": "0.10-0.70"
       },
       {
-        "id": "SEARCH-LAB-008",
+        "id": "CDE-LAB-008",
         "variable": "plateletsჩl",
         "domain": "LAB",
         "table": "subject",
@@ -708,7 +708,7 @@
         "range": "5-1500"
       },
       {
-        "id": "SEARCH-LAB-009",
+        "id": "CDE-LAB-009",
         "variable": "crp_mg_l",
         "domain": "LAB",
         "table": "subject",
@@ -718,7 +718,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-LAB-010",
+        "id": "CDE-LAB-010",
         "variable": "albumin_g_l",
         "domain": "LAB",
         "table": "subject",
@@ -728,7 +728,7 @@
         "range": "10-60"
       },
       {
-        "id": "SEARCH-LAB-011",
+        "id": "CDE-LAB-011",
         "variable": "creatinine_umol_l",
         "domain": "LAB",
         "table": "subject",
@@ -738,7 +738,7 @@
         "range": "20-1500"
       },
       {
-        "id": "SEARCH-LAB-012",
+        "id": "CDE-LAB-012",
         "variable": "egfr_ml_min_1_73m2",
         "domain": "LAB",
         "table": "subject",
@@ -748,7 +748,7 @@
         "range": "1-150"
       },
       {
-        "id": "SEARCH-LAB-013",
+        "id": "CDE-LAB-013",
         "variable": "egfr_equation",
         "domain": "LAB",
         "table": "subject",
@@ -758,7 +758,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-001",
+        "id": "CDE-MOL-001",
         "variable": "hpv_hr_dna_cobas_result",
         "domain": "MOL",
         "table": "subject",
@@ -768,7 +768,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-002",
+        "id": "CDE-MOL-002",
         "variable": "hpv_hr_mrna_aptima_result",
         "domain": "MOL",
         "table": "subject",
@@ -778,7 +778,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-003",
+        "id": "CDE-MOL-003",
         "variable": "hpv_aptima_gt_16_result",
         "domain": "MOL",
         "table": "subject",
@@ -788,7 +788,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-004",
+        "id": "CDE-MOL-004",
         "variable": "hpv_aptima_gt_18_45_result",
         "domain": "MOL",
         "table": "subject",
@@ -798,7 +798,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-005",
+        "id": "CDE-MOL-005",
         "variable": "hpv_onclarity_hr_result",
         "domain": "MOL",
         "table": "subject",
@@ -808,7 +808,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-006",
+        "id": "CDE-MOL-006",
         "variable": "hpv_onclarity_16_result",
         "domain": "MOL",
         "table": "subject",
@@ -818,7 +818,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-007",
+        "id": "CDE-MOL-007",
         "variable": "hpv_onclarity_18_result",
         "domain": "MOL",
         "table": "subject",
@@ -828,7 +828,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-008",
+        "id": "CDE-MOL-008",
         "variable": "hpv_onclarity_45_result",
         "domain": "MOL",
         "table": "subject",
@@ -838,7 +838,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-009",
+        "id": "CDE-MOL-009",
         "variable": "hpv_onclarity_31_result",
         "domain": "MOL",
         "table": "subject",
@@ -848,7 +848,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-010",
+        "id": "CDE-MOL-010",
         "variable": "hpv_onclarity_51_result",
         "domain": "MOL",
         "table": "subject",
@@ -858,7 +858,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-011",
+        "id": "CDE-MOL-011",
         "variable": "hpv_onclarity_52_result",
         "domain": "MOL",
         "table": "subject",
@@ -868,7 +868,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-012",
+        "id": "CDE-MOL-012",
         "variable": "hpv_onclarity_33_58_result",
         "domain": "MOL",
         "table": "subject",
@@ -878,7 +878,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-013",
+        "id": "CDE-MOL-013",
         "variable": "hpv_onclarity_56_59_66_result",
         "domain": "MOL",
         "table": "subject",
@@ -888,7 +888,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-014",
+        "id": "CDE-MOL-014",
         "variable": "hpv_onclarity_35_39_68_result",
         "domain": "MOL",
         "table": "subject",
@@ -898,7 +898,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-015",
+        "id": "CDE-MOL-015",
         "variable": "hpv_hr_result_followup",
         "domain": "MOL",
         "table": "subject",
@@ -908,7 +908,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-016",
+        "id": "CDE-MOL-016",
         "variable": "hpv_test_platform_followup",
         "domain": "MOL",
         "table": "subject",
@@ -918,7 +918,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-017",
+        "id": "CDE-MOL-017",
         "variable": "hpv_test_day_followup",
         "domain": "MOL",
         "table": "subject",
@@ -928,7 +928,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-018",
+        "id": "CDE-MOL-018",
         "variable": "methylation_cadm1_score",
         "domain": "MOL",
         "table": "subject",
@@ -938,7 +938,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-MOL-019",
+        "id": "CDE-MOL-019",
         "variable": "methylation_mal_score",
         "domain": "MOL",
         "table": "subject",
@@ -948,7 +948,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-MOL-020",
+        "id": "CDE-MOL-020",
         "variable": "methylation_mir124_score",
         "domain": "MOL",
         "table": "subject",
@@ -958,7 +958,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-MOL-021",
+        "id": "CDE-MOL-021",
         "variable": "methylation_total_score",
         "domain": "MOL",
         "table": "subject",
@@ -968,7 +968,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-MOL-022",
+        "id": "CDE-MOL-022",
         "variable": "methylation_cadm1_result",
         "domain": "MOL",
         "table": "subject",
@@ -978,7 +978,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-023",
+        "id": "CDE-MOL-023",
         "variable": "methylation_mal_result",
         "domain": "MOL",
         "table": "subject",
@@ -988,7 +988,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-024",
+        "id": "CDE-MOL-024",
         "variable": "methylation_mir124_result",
         "domain": "MOL",
         "table": "subject",
@@ -998,7 +998,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-025",
+        "id": "CDE-MOL-025",
         "variable": "brca1_germline_status",
         "domain": "MOL",
         "table": "subject",
@@ -1008,7 +1008,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-026",
+        "id": "CDE-MOL-026",
         "variable": "brca2_germline_status",
         "domain": "MOL",
         "table": "subject",
@@ -1018,7 +1018,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-027",
+        "id": "CDE-MOL-027",
         "variable": "brca1_somatic_status",
         "domain": "MOL",
         "table": "subject",
@@ -1028,7 +1028,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-028",
+        "id": "CDE-MOL-028",
         "variable": "brca2_somatic_status",
         "domain": "MOL",
         "table": "subject",
@@ -1038,7 +1038,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-MOL-029",
+        "id": "CDE-MOL-029",
         "variable": "hrd_status",
         "domain": "MOL",
         "table": "subject",
@@ -1048,7 +1048,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-001",
+        "id": "CDE-PAT-001",
         "variable": "cervical_cytology_result_baseline",
         "domain": "PAT",
         "table": "subject",
@@ -1058,7 +1058,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-002",
+        "id": "CDE-PAT-002",
         "variable": "cervical_cytology_result_followup",
         "domain": "PAT",
         "table": "subject",
@@ -1068,7 +1068,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-003",
+        "id": "CDE-PAT-003",
         "variable": "cervical_cytology_local_code_followup",
         "domain": "PAT",
         "table": "subject",
@@ -1078,7 +1078,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-004",
+        "id": "CDE-PAT-004",
         "variable": "cervical_cytology_day_followup",
         "domain": "PAT",
         "table": "subject",
@@ -1088,7 +1088,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-005",
+        "id": "CDE-PAT-005",
         "variable": "cintec_plus_result",
         "domain": "PAT",
         "table": "subject",
@@ -1098,7 +1098,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-006",
+        "id": "CDE-PAT-006",
         "variable": "cervical_histology_code_baseline",
         "domain": "PAT",
         "table": "subject",
@@ -1108,7 +1108,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-007",
+        "id": "CDE-PAT-007",
         "variable": "cervical_histology_code_followup",
         "domain": "PAT",
         "table": "subject",
@@ -1118,7 +1118,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-008",
+        "id": "CDE-PAT-008",
         "variable": "cervical_histology_category_baseline",
         "domain": "PAT",
         "table": "subject",
@@ -1128,7 +1128,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-009",
+        "id": "CDE-PAT-009",
         "variable": "cervical_histology_category_followup",
         "domain": "PAT",
         "table": "subject",
@@ -1138,7 +1138,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-010",
+        "id": "CDE-PAT-010",
         "variable": "cervical_histology_day_followup",
         "domain": "PAT",
         "table": "subject",
@@ -1148,7 +1148,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-011",
+        "id": "CDE-PAT-011",
         "variable": "tumour_behaviour",
         "domain": "PAT",
         "table": "subject",
@@ -1158,7 +1158,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-012",
+        "id": "CDE-PAT-012",
         "variable": "tumour_histotype",
         "domain": "PAT",
         "table": "subject",
@@ -1168,7 +1168,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-013",
+        "id": "CDE-PAT-013",
         "variable": "tumour_morphology_icdo3",
         "domain": "PAT",
         "table": "subject",
@@ -1178,7 +1178,7 @@
         "range": "Pattern NNNN/N"
       },
       {
-        "id": "SEARCH-PAT-014",
+        "id": "CDE-PAT-014",
         "variable": "tumour_primary_site_icdo3",
         "domain": "PAT",
         "table": "subject",
@@ -1188,7 +1188,7 @@
         "range": "Pattern CNN.N"
       },
       {
-        "id": "SEARCH-PAT-015",
+        "id": "CDE-PAT-015",
         "variable": "synchronous_primary",
         "domain": "PAT",
         "table": "subject",
@@ -1198,7 +1198,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-016",
+        "id": "CDE-PAT-016",
         "variable": "tumour_histology_detail_text",
         "domain": "PAT",
         "table": "subject",
@@ -1208,7 +1208,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-017",
+        "id": "CDE-PAT-017",
         "variable": "figo_stage",
         "domain": "PAT",
         "table": "subject",
@@ -1218,7 +1218,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-018",
+        "id": "CDE-PAT-018",
         "variable": "figo_staging_system",
         "domain": "PAT",
         "table": "subject",
@@ -1228,7 +1228,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-019",
+        "id": "CDE-PAT-019",
         "variable": "tumour_grade",
         "domain": "PAT",
         "table": "subject",
@@ -1238,7 +1238,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-020",
+        "id": "CDE-PAT-020",
         "variable": "tumour_grade_second_component",
         "domain": "PAT",
         "table": "subject",
@@ -1248,7 +1248,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-021",
+        "id": "CDE-PAT-021",
         "variable": "p53_ihc_pattern",
         "domain": "PAT",
         "table": "subject",
@@ -1258,7 +1258,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-022",
+        "id": "CDE-PAT-022",
         "variable": "ihc_wt1_result",
         "domain": "PAT",
         "table": "subject",
@@ -1268,7 +1268,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-023",
+        "id": "CDE-PAT-023",
         "variable": "ihc_er_result",
         "domain": "PAT",
         "table": "subject",
@@ -1278,7 +1278,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-024",
+        "id": "CDE-PAT-024",
         "variable": "ihc_pr_result",
         "domain": "PAT",
         "table": "subject",
@@ -1288,7 +1288,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-025",
+        "id": "CDE-PAT-025",
         "variable": "ihc_pax8_result",
         "domain": "PAT",
         "table": "subject",
@@ -1298,7 +1298,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-026",
+        "id": "CDE-PAT-026",
         "variable": "ihc_ck7_result",
         "domain": "PAT",
         "table": "subject",
@@ -1308,7 +1308,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-027",
+        "id": "CDE-PAT-027",
         "variable": "ihc_p16_result",
         "domain": "PAT",
         "table": "subject",
@@ -1318,7 +1318,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-028",
+        "id": "CDE-PAT-028",
         "variable": "ihc_berep4_result",
         "domain": "PAT",
         "table": "subject",
@@ -1328,7 +1328,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-029",
+        "id": "CDE-PAT-029",
         "variable": "ihc_er_intensity",
         "domain": "PAT",
         "table": "subject",
@@ -1338,7 +1338,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-030",
+        "id": "CDE-PAT-030",
         "variable": "ihc_pr_intensity",
         "domain": "PAT",
         "table": "subject",
@@ -1348,7 +1348,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-031",
+        "id": "CDE-PAT-031",
         "variable": "chemo_response_score",
         "domain": "PAT",
         "table": "subject",
@@ -1358,7 +1358,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-032",
+        "id": "CDE-PAT-032",
         "variable": "pathology_polyp_assessed",
         "domain": "PAT",
         "table": "specimen",
@@ -1368,7 +1368,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-033",
+        "id": "CDE-PAT-033",
         "variable": "polyp_histology",
         "domain": "PAT",
         "table": "specimen",
@@ -1378,7 +1378,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-034",
+        "id": "CDE-PAT-034",
         "variable": "polyp_dysplasia",
         "domain": "PAT",
         "table": "specimen",
@@ -1388,7 +1388,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-035",
+        "id": "CDE-PAT-035",
         "variable": "polyp_size_path_mm",
         "domain": "PAT",
         "table": "specimen",
@@ -1398,7 +1398,7 @@
         "range": "0.5-150"
       },
       {
-        "id": "SEARCH-PAT-036",
+        "id": "CDE-PAT-036",
         "variable": "resection_completeness_path",
         "domain": "PAT",
         "table": "specimen",
@@ -1408,7 +1408,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-037",
+        "id": "CDE-PAT-037",
         "variable": "piecemeal_resection_path",
         "domain": "PAT",
         "table": "specimen",
@@ -1418,7 +1418,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-038",
+        "id": "CDE-PAT-038",
         "variable": "crc_histological_type",
         "domain": "PAT",
         "table": "specimen",
@@ -1428,7 +1428,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-039",
+        "id": "CDE-PAT-039",
         "variable": "pt_category",
         "domain": "PAT",
         "table": "specimen",
@@ -1438,7 +1438,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-040",
+        "id": "CDE-PAT-040",
         "variable": "crc_grade",
         "domain": "PAT",
         "table": "specimen",
@@ -1448,7 +1448,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-041",
+        "id": "CDE-PAT-041",
         "variable": "tumour_budding_reported",
         "domain": "PAT",
         "table": "specimen",
@@ -1458,7 +1458,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-042",
+        "id": "CDE-PAT-042",
         "variable": "venous_invasion_reported",
         "domain": "PAT",
         "table": "specimen",
@@ -1468,7 +1468,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-043",
+        "id": "CDE-PAT-043",
         "variable": "perineural_invasion_reported",
         "domain": "PAT",
         "table": "specimen",
@@ -1478,7 +1478,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PAT-044",
+        "id": "CDE-PAT-044",
         "variable": "lymphovascular_invasion_reported",
         "domain": "PAT",
         "table": "specimen",
@@ -1488,7 +1488,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-001",
+        "id": "CDE-IMG-001",
         "variable": "imaging_modality",
         "domain": "IMG",
         "table": "event",
@@ -1498,7 +1498,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-002",
+        "id": "CDE-IMG-002",
         "variable": "ascending_aorta_diameter_mm",
         "domain": "IMG",
         "table": "event",
@@ -1508,7 +1508,7 @@
         "range": "5-80"
       },
       {
-        "id": "SEARCH-IMG-003",
+        "id": "CDE-IMG-003",
         "variable": "aortic_arch_diameter_mm",
         "domain": "IMG",
         "table": "event",
@@ -1518,7 +1518,7 @@
         "range": "5-80"
       },
       {
-        "id": "SEARCH-IMG-004",
+        "id": "CDE-IMG-004",
         "variable": "descending_aorta_diameter_mm",
         "domain": "IMG",
         "table": "event",
@@ -1528,7 +1528,7 @@
         "range": "5-80"
       },
       {
-        "id": "SEARCH-IMG-005",
+        "id": "CDE-IMG-005",
         "variable": "pulmonary_artery_diameter_mm",
         "domain": "IMG",
         "table": "event",
@@ -1538,7 +1538,7 @@
         "range": "5-80"
       },
       {
-        "id": "SEARCH-IMG-006",
+        "id": "CDE-IMG-006",
         "variable": "left_atrium_ap_diameter_mm",
         "domain": "IMG",
         "table": "event",
@@ -1548,7 +1548,7 @@
         "range": "5-80"
       },
       {
-        "id": "SEARCH-IMG-007",
+        "id": "CDE-IMG-007",
         "variable": "pericardial_thickness_mm",
         "domain": "IMG",
         "table": "event",
@@ -1558,7 +1558,7 @@
         "range": "0.5-15"
       },
       {
-        "id": "SEARCH-IMG-008",
+        "id": "CDE-IMG-008",
         "variable": "lv_edv_ml",
         "domain": "IMG",
         "table": "event",
@@ -1568,7 +1568,7 @@
         "range": "30-500"
       },
       {
-        "id": "SEARCH-IMG-009",
+        "id": "CDE-IMG-009",
         "variable": "lv_edv_index_ml_m2",
         "domain": "IMG",
         "table": "event",
@@ -1578,7 +1578,7 @@
         "range": "20-250"
       },
       {
-        "id": "SEARCH-IMG-010",
+        "id": "CDE-IMG-010",
         "variable": "lv_esv_ml",
         "domain": "IMG",
         "table": "event",
@@ -1588,7 +1588,7 @@
         "range": "5-400"
       },
       {
-        "id": "SEARCH-IMG-011",
+        "id": "CDE-IMG-011",
         "variable": "lv_esv_index_ml_m2",
         "domain": "IMG",
         "table": "event",
@@ -1598,7 +1598,7 @@
         "range": "3-200"
       },
       {
-        "id": "SEARCH-IMG-012",
+        "id": "CDE-IMG-012",
         "variable": "lv_ef_pct",
         "domain": "IMG",
         "table": "event",
@@ -1608,7 +1608,7 @@
         "range": "5-90"
       },
       {
-        "id": "SEARCH-IMG-013",
+        "id": "CDE-IMG-013",
         "variable": "lv_mass_g",
         "domain": "IMG",
         "table": "event",
@@ -1618,7 +1618,7 @@
         "range": "30-400"
       },
       {
-        "id": "SEARCH-IMG-014",
+        "id": "CDE-IMG-014",
         "variable": "lv_mass_index_g_m2",
         "domain": "IMG",
         "table": "event",
@@ -1628,7 +1628,7 @@
         "range": "20-200"
       },
       {
-        "id": "SEARCH-IMG-015",
+        "id": "CDE-IMG-015",
         "variable": "lv_cardiac_output_l_min",
         "domain": "IMG",
         "table": "event",
@@ -1638,7 +1638,7 @@
         "range": "1-15"
       },
       {
-        "id": "SEARCH-IMG-016",
+        "id": "CDE-IMG-016",
         "variable": "lv_cardiac_index_l_min_m2",
         "domain": "IMG",
         "table": "event",
@@ -1648,7 +1648,7 @@
         "range": "0.5-8"
       },
       {
-        "id": "SEARCH-IMG-017",
+        "id": "CDE-IMG-017",
         "variable": "rv_edv_ml",
         "domain": "IMG",
         "table": "event",
@@ -1658,7 +1658,7 @@
         "range": "30-500"
       },
       {
-        "id": "SEARCH-IMG-018",
+        "id": "CDE-IMG-018",
         "variable": "rv_edv_index_ml_m2",
         "domain": "IMG",
         "table": "event",
@@ -1668,7 +1668,7 @@
         "range": "20-250"
       },
       {
-        "id": "SEARCH-IMG-019",
+        "id": "CDE-IMG-019",
         "variable": "rv_esv_ml",
         "domain": "IMG",
         "table": "event",
@@ -1678,7 +1678,7 @@
         "range": "5-400"
       },
       {
-        "id": "SEARCH-IMG-020",
+        "id": "CDE-IMG-020",
         "variable": "rv_esv_index_ml_m2",
         "domain": "IMG",
         "table": "event",
@@ -1688,7 +1688,7 @@
         "range": "3-200"
       },
       {
-        "id": "SEARCH-IMG-021",
+        "id": "CDE-IMG-021",
         "variable": "rv_ef_pct",
         "domain": "IMG",
         "table": "event",
@@ -1698,7 +1698,7 @@
         "range": "5-90"
       },
       {
-        "id": "SEARCH-IMG-022",
+        "id": "CDE-IMG-022",
         "variable": "rv_mass_g",
         "domain": "IMG",
         "table": "event",
@@ -1708,7 +1708,7 @@
         "range": "5-200"
       },
       {
-        "id": "SEARCH-IMG-023",
+        "id": "CDE-IMG-023",
         "variable": "rv_mass_index_g_m2",
         "domain": "IMG",
         "table": "event",
@@ -1718,7 +1718,7 @@
         "range": "3-100"
       },
       {
-        "id": "SEARCH-IMG-024",
+        "id": "CDE-IMG-024",
         "variable": "rv_cardiac_output_l_min",
         "domain": "IMG",
         "table": "event",
@@ -1728,7 +1728,7 @@
         "range": "1-15"
       },
       {
-        "id": "SEARCH-IMG-025",
+        "id": "CDE-IMG-025",
         "variable": "rv_cardiac_index_l_min_m2",
         "domain": "IMG",
         "table": "event",
@@ -1738,7 +1738,7 @@
         "range": "0.5-8"
       },
       {
-        "id": "SEARCH-IMG-030",
+        "id": "CDE-IMG-030",
         "variable": "cce_complete_transit",
         "domain": "IMG",
         "table": "event",
@@ -1748,7 +1748,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-031",
+        "id": "CDE-IMG-031",
         "variable": "capsule_excreted",
         "domain": "IMG",
         "table": "event",
@@ -1758,7 +1758,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-032",
+        "id": "CDE-IMG-032",
         "variable": "cce_total_transit_time_min",
         "domain": "IMG",
         "table": "event",
@@ -1768,7 +1768,7 @@
         "range": "0-1440"
       },
       {
-        "id": "SEARCH-IMG-033",
+        "id": "CDE-IMG-033",
         "variable": "cce_recording_length_min",
         "domain": "IMG",
         "table": "event",
@@ -1778,7 +1778,7 @@
         "range": "0-1440"
       },
       {
-        "id": "SEARCH-IMG-034",
+        "id": "CDE-IMG-034",
         "variable": "capsule_last_location",
         "domain": "IMG",
         "table": "event",
@@ -1788,7 +1788,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-035",
+        "id": "CDE-IMG-035",
         "variable": "bowel_cleansing_caecum",
         "domain": "IMG",
         "table": "event",
@@ -1798,7 +1798,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-036",
+        "id": "CDE-IMG-036",
         "variable": "bowel_cleansing_right_colon",
         "domain": "IMG",
         "table": "event",
@@ -1808,7 +1808,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-037",
+        "id": "CDE-IMG-037",
         "variable": "bowel_cleansing_transverse_colon",
         "domain": "IMG",
         "table": "event",
@@ -1818,7 +1818,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-038",
+        "id": "CDE-IMG-038",
         "variable": "bowel_cleansing_left_colon",
         "domain": "IMG",
         "table": "event",
@@ -1828,7 +1828,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-039",
+        "id": "CDE-IMG-039",
         "variable": "bowel_cleansing_rectum",
         "domain": "IMG",
         "table": "event",
@@ -1838,7 +1838,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-040",
+        "id": "CDE-IMG-040",
         "variable": "cce_technical_quality",
         "domain": "IMG",
         "table": "event",
@@ -1848,7 +1848,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-041",
+        "id": "CDE-IMG-041",
         "variable": "caecum_visualised",
         "domain": "IMG",
         "table": "event",
@@ -1858,7 +1858,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-042",
+        "id": "CDE-IMG-042",
         "variable": "hepatic_flexure_visualised",
         "domain": "IMG",
         "table": "event",
@@ -1868,7 +1868,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-043",
+        "id": "CDE-IMG-043",
         "variable": "splenic_flexure_visualised",
         "domain": "IMG",
         "table": "event",
@@ -1878,7 +1878,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-044",
+        "id": "CDE-IMG-044",
         "variable": "rectum_visualised",
         "domain": "IMG",
         "table": "event",
@@ -1888,7 +1888,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-045",
+        "id": "CDE-IMG-045",
         "variable": "cce_other_findings_present",
         "domain": "IMG",
         "table": "event",
@@ -1898,7 +1898,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-046",
+        "id": "CDE-IMG-046",
         "variable": "cce_polyp_detected",
         "domain": "IMG",
         "table": "event",
@@ -1908,7 +1908,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-047",
+        "id": "CDE-IMG-047",
         "variable": "cce_polyp_count",
         "domain": "IMG",
         "table": "event",
@@ -1918,7 +1918,7 @@
         "range": "0-100"
       },
       {
-        "id": "SEARCH-IMG-048",
+        "id": "CDE-IMG-048",
         "variable": "polyp_first_image_time_s",
         "domain": "IMG",
         "table": "lesion",
@@ -1928,7 +1928,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-IMG-049",
+        "id": "CDE-IMG-049",
         "variable": "camera_head",
         "domain": "IMG",
         "table": "lesion",
@@ -1938,7 +1938,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-050",
+        "id": "CDE-IMG-050",
         "variable": "polyp_size_cce_mm",
         "domain": "IMG",
         "table": "lesion",
@@ -1948,7 +1948,7 @@
         "range": "0.5-150"
       },
       {
-        "id": "SEARCH-IMG-051",
+        "id": "CDE-IMG-051",
         "variable": "polyp_morphology",
         "domain": "IMG",
         "table": "lesion",
@@ -1958,7 +1958,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-052",
+        "id": "CDE-IMG-052",
         "variable": "malignancy_suspected",
         "domain": "IMG",
         "table": "lesion",
@@ -1968,7 +1968,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-053",
+        "id": "CDE-IMG-053",
         "variable": "polyp_location",
         "domain": "IMG",
         "table": "lesion",
@@ -1978,7 +1978,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-054",
+        "id": "CDE-IMG-054",
         "variable": "nonneoplastic_finding_reported",
         "domain": "IMG",
         "table": "annotation",
@@ -1988,7 +1988,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-055",
+        "id": "CDE-IMG-055",
         "variable": "nonneoplastic_finding_source",
         "domain": "IMG",
         "table": "annotation",
@@ -1998,7 +1998,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-056",
+        "id": "CDE-IMG-056",
         "variable": "nonneoplastic_finding_type",
         "domain": "IMG",
         "table": "annotation",
@@ -2008,7 +2008,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-057",
+        "id": "CDE-IMG-057",
         "variable": "finding_time_s",
         "domain": "IMG",
         "table": "annotation",
@@ -2018,7 +2018,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-IMG-058",
+        "id": "CDE-IMG-058",
         "variable": "caecum_time_s",
         "domain": "IMG",
         "table": "annotation",
@@ -2028,7 +2028,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-IMG-062",
+        "id": "CDE-IMG-062",
         "variable": "caecum_camera_head",
         "domain": "IMG",
         "table": "annotation",
@@ -2038,7 +2038,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-059",
+        "id": "CDE-IMG-059",
         "variable": "hepatic_flexure_time_s",
         "domain": "IMG",
         "table": "annotation",
@@ -2048,7 +2048,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-IMG-063",
+        "id": "CDE-IMG-063",
         "variable": "hepatic_flexure_camera_head",
         "domain": "IMG",
         "table": "annotation",
@@ -2058,7 +2058,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-060",
+        "id": "CDE-IMG-060",
         "variable": "splenic_flexure_time_s",
         "domain": "IMG",
         "table": "annotation",
@@ -2068,7 +2068,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-IMG-064",
+        "id": "CDE-IMG-064",
         "variable": "splenic_flexure_camera_head",
         "domain": "IMG",
         "table": "annotation",
@@ -2078,7 +2078,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-061",
+        "id": "CDE-IMG-061",
         "variable": "rectum_time_s",
         "domain": "IMG",
         "table": "annotation",
@@ -2088,7 +2088,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-IMG-065",
+        "id": "CDE-IMG-065",
         "variable": "rectum_camera_head",
         "domain": "IMG",
         "table": "annotation",
@@ -2098,7 +2098,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-066",
+        "id": "CDE-IMG-066",
         "variable": "passage_segment",
         "domain": "IMG",
         "table": "annotation",
@@ -2108,7 +2108,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-067",
+        "id": "CDE-IMG-067",
         "variable": "passage_camera_head",
         "domain": "IMG",
         "table": "annotation",
@@ -2118,7 +2118,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-068",
+        "id": "CDE-IMG-068",
         "variable": "passage_is_preferred",
         "domain": "IMG",
         "table": "annotation",
@@ -2128,7 +2128,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-069",
+        "id": "CDE-IMG-069",
         "variable": "passage_direction",
         "domain": "IMG",
         "table": "annotation",
@@ -2138,7 +2138,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-070",
+        "id": "CDE-IMG-070",
         "variable": "passage_start_time_s",
         "domain": "IMG",
         "table": "annotation",
@@ -2148,7 +2148,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-IMG-071",
+        "id": "CDE-IMG-071",
         "variable": "passage_end_time_s",
         "domain": "IMG",
         "table": "annotation",
@@ -2158,7 +2158,7 @@
         "range": ">= passage_start_time_s"
       },
       {
-        "id": "SEARCH-IMG-072",
+        "id": "CDE-IMG-072",
         "variable": "gi_image_class",
         "domain": "IMG",
         "table": "image",
@@ -2168,7 +2168,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-073",
+        "id": "CDE-IMG-073",
         "variable": "gi_tract_part",
         "domain": "IMG",
         "table": "image",
@@ -2178,7 +2178,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-IMG-074",
+        "id": "CDE-IMG-074",
         "variable": "gi_anatomical_site_sct",
         "domain": "IMG",
         "table": "image",
@@ -2188,7 +2188,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-001",
+        "id": "CDE-PRC-001",
         "variable": "capsule_swallowed",
         "domain": "PRC",
         "table": "event",
@@ -2198,7 +2198,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-002",
+        "id": "CDE-PRC-002",
         "variable": "capsule_ingested_before_0930",
         "domain": "PRC",
         "table": "event",
@@ -2208,7 +2208,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-003",
+        "id": "CDE-PRC-003",
         "variable": "bowel_prep_full_compliance",
         "domain": "PRC",
         "table": "event",
@@ -2218,7 +2218,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-004",
+        "id": "CDE-PRC-004",
         "variable": "bowel_prep_dose{1-4}_start_day",
         "domain": "PRC",
         "table": "questionnaire",
@@ -2228,7 +2228,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-005",
+        "id": "CDE-PRC-005",
         "variable": "bowel_prep_dose{1-4}_start_time",
         "domain": "PRC",
         "table": "questionnaire",
@@ -2238,7 +2238,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-006",
+        "id": "CDE-PRC-006",
         "variable": "bowel_prep_dose{1-4}_amount",
         "domain": "PRC",
         "table": "questionnaire",
@@ -2248,7 +2248,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-007",
+        "id": "CDE-PRC-007",
         "variable": "booster_glasses_count",
         "domain": "PRC",
         "table": "questionnaire",
@@ -2258,7 +2258,7 @@
         "range": "1-3"
       },
       {
-        "id": "SEARCH-PRC-008",
+        "id": "CDE-PRC-008",
         "variable": "booster_amount_consumed",
         "domain": "PRC",
         "table": "questionnaire",
@@ -2268,7 +2268,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-009",
+        "id": "CDE-PRC-009",
         "variable": "chewing_gum_during_cce",
         "domain": "PRC",
         "table": "questionnaire",
@@ -2278,7 +2278,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-010",
+        "id": "CDE-PRC-010",
         "variable": "bisacodyl_suppository_during_cce",
         "domain": "PRC",
         "table": "questionnaire",
@@ -2288,7 +2288,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-011",
+        "id": "CDE-PRC-011",
         "variable": "caffeine_tablets_during_cce",
         "domain": "PRC",
         "table": "questionnaire",
@@ -2298,7 +2298,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-012",
+        "id": "CDE-PRC-012",
         "variable": "food_during_cce",
         "domain": "PRC",
         "table": "questionnaire",
@@ -2308,7 +2308,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-013",
+        "id": "CDE-PRC-013",
         "variable": "colonoscopy_indicated",
         "domain": "PRC",
         "table": "event",
@@ -2318,7 +2318,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-014",
+        "id": "CDE-PRC-014",
         "variable": "colonoscopy_referral_day",
         "domain": "PRC",
         "table": "event",
@@ -2328,7 +2328,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-015",
+        "id": "CDE-PRC-015",
         "variable": "colonoscopy_planned_day",
         "domain": "PRC",
         "table": "event",
@@ -2338,7 +2338,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-016",
+        "id": "CDE-PRC-016",
         "variable": "colonoscopy_day",
         "domain": "PRC",
         "table": "event",
@@ -2348,7 +2348,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-017",
+        "id": "CDE-PRC-017",
         "variable": "lower_gi_endoscopy_performed",
         "domain": "PRC",
         "table": "event",
@@ -2358,7 +2358,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-018",
+        "id": "CDE-PRC-018",
         "variable": "lower_gi_endoscopy_type",
         "domain": "PRC",
         "table": "event",
@@ -2368,7 +2368,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-019",
+        "id": "CDE-PRC-019",
         "variable": "emr_esd_performed",
         "domain": "PRC",
         "table": "event",
@@ -2378,7 +2378,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-020",
+        "id": "CDE-PRC-020",
         "variable": "no_endoscopy_reason",
         "domain": "PRC",
         "table": "event",
@@ -2388,7 +2388,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-021",
+        "id": "CDE-PRC-021",
         "variable": "oc_polyp_detected",
         "domain": "PRC",
         "table": "event",
@@ -2398,7 +2398,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-022",
+        "id": "CDE-PRC-022",
         "variable": "oc_polyp_count",
         "domain": "PRC",
         "table": "event",
@@ -2408,7 +2408,7 @@
         "range": "0-100"
       },
       {
-        "id": "SEARCH-PRC-023",
+        "id": "CDE-PRC-023",
         "variable": "polyp_removed",
         "domain": "PRC",
         "table": "lesion",
@@ -2418,7 +2418,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-024",
+        "id": "CDE-PRC-024",
         "variable": "polyp_not_removed_reason",
         "domain": "PRC",
         "table": "lesion",
@@ -2428,7 +2428,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-025",
+        "id": "CDE-PRC-025",
         "variable": "polyp_size_oc_mm",
         "domain": "PRC",
         "table": "lesion",
@@ -2438,7 +2438,7 @@
         "range": "0.5-150"
       },
       {
-        "id": "SEARCH-PRC-026",
+        "id": "CDE-PRC-026",
         "variable": "polyp_lost",
         "domain": "PRC",
         "table": "lesion",
@@ -2448,7 +2448,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-027",
+        "id": "CDE-PRC-027",
         "variable": "piecemeal_resection_endoscopist",
         "domain": "PRC",
         "table": "lesion",
@@ -2458,7 +2458,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-028",
+        "id": "CDE-PRC-028",
         "variable": "radical_resection_endoscopist",
         "domain": "PRC",
         "table": "lesion",
@@ -2468,7 +2468,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-029",
+        "id": "CDE-PRC-029",
         "variable": "colposcopy_day_followup",
         "domain": "PRC",
         "table": "subject",
@@ -2478,7 +2478,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-030",
+        "id": "CDE-PRC-030",
         "variable": "colposcopy_procedure",
         "domain": "PRC",
         "table": "subject",
@@ -2488,7 +2488,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-031",
+        "id": "CDE-PRC-031",
         "variable": "colposcopy_outcome",
         "domain": "PRC",
         "table": "subject",
@@ -2498,7 +2498,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-032",
+        "id": "CDE-PRC-032",
         "variable": "treatment_pathway",
         "domain": "PRC",
         "table": "subject",
@@ -2508,7 +2508,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-033",
+        "id": "CDE-PRC-033",
         "variable": "residual_disease",
         "domain": "PRC",
         "table": "subject",
@@ -2518,7 +2518,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-034",
+        "id": "CDE-PRC-034",
         "variable": "peritoneal_cancer_index_score",
         "domain": "PRC",
         "table": "subject",
@@ -2528,7 +2528,7 @@
         "range": "0-39"
       },
       {
-        "id": "SEARCH-PRC-035",
+        "id": "CDE-PRC-035",
         "variable": "radiotherapy_received",
         "domain": "PRC",
         "table": "subject",
@@ -2538,7 +2538,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRC-036",
+        "id": "CDE-PRC-036",
         "variable": "radiotherapy_fractions",
         "domain": "PRC",
         "table": "subject",
@@ -2548,7 +2548,7 @@
         "range": "1-60"
       },
       {
-        "id": "SEARCH-PRC-037",
+        "id": "CDE-PRC-037",
         "variable": "radiotherapy_site_text",
         "domain": "PRC",
         "table": "subject",
@@ -2558,7 +2558,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-001",
+        "id": "CDE-TRT-001",
         "variable": "medication_atc",
         "domain": "TRT",
         "table": "subject",
@@ -2568,7 +2568,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-002",
+        "id": "CDE-TRT-002",
         "variable": "medication_text",
         "domain": "TRT",
         "table": "subject",
@@ -2578,7 +2578,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-003",
+        "id": "CDE-TRT-003",
         "variable": "adjuvant_chemo_atc",
         "domain": "TRT",
         "table": "treatment",
@@ -2588,7 +2588,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-004",
+        "id": "CDE-TRT-004",
         "variable": "adjuvant_chemo_cycles",
         "domain": "TRT",
         "table": "treatment",
@@ -2598,7 +2598,7 @@
         "range": "0-12"
       },
       {
-        "id": "SEARCH-TRT-005",
+        "id": "CDE-TRT-005",
         "variable": "neoadjuvant_chemo_atc",
         "domain": "TRT",
         "table": "treatment",
@@ -2608,7 +2608,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-006",
+        "id": "CDE-TRT-006",
         "variable": "neoadjuvant_chemo_cycles",
         "domain": "TRT",
         "table": "treatment",
@@ -2618,7 +2618,7 @@
         "range": "0-12"
       },
       {
-        "id": "SEARCH-TRT-007",
+        "id": "CDE-TRT-007",
         "variable": "maintenance_therapy_atc",
         "domain": "TRT",
         "table": "treatment",
@@ -2628,7 +2628,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-008",
+        "id": "CDE-TRT-008",
         "variable": "maintenance_therapy_class",
         "domain": "TRT",
         "table": "treatment",
@@ -2638,7 +2638,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-009",
+        "id": "CDE-TRT-009",
         "variable": "hormone_replacement_therapy",
         "domain": "TRT",
         "table": "subject",
@@ -2648,7 +2648,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-010",
+        "id": "CDE-TRT-010",
         "variable": "chemo_setting",
         "domain": "TRT",
         "table": "treatment",
@@ -2658,7 +2658,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-011",
+        "id": "CDE-TRT-011",
         "variable": "chemo_interruptions",
         "domain": "TRT",
         "table": "treatment",
@@ -2668,7 +2668,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-012",
+        "id": "CDE-TRT-012",
         "variable": "chemo_cycles",
         "domain": "TRT",
         "table": "treatment",
@@ -2678,7 +2678,7 @@
         "range": "0-12"
       },
       {
-        "id": "SEARCH-TRT-013",
+        "id": "CDE-TRT-013",
         "variable": "second_line_chemo",
         "domain": "TRT",
         "table": "treatment",
@@ -2688,7 +2688,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-014",
+        "id": "CDE-TRT-014",
         "variable": "hormone_therapy",
         "domain": "TRT",
         "table": "treatment",
@@ -2698,7 +2698,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-015",
+        "id": "CDE-TRT-015",
         "variable": "anticancer_drug_text",
         "domain": "TRT",
         "table": "treatment",
@@ -2708,7 +2708,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-016",
+        "id": "CDE-TRT-016",
         "variable": "regular_laxative_use",
         "domain": "TRT",
         "table": "subject",
@@ -2718,7 +2718,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-017",
+        "id": "CDE-TRT-017",
         "variable": "regular_laxative_text",
         "domain": "TRT",
         "table": "subject",
@@ -2728,7 +2728,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-018",
+        "id": "CDE-TRT-018",
         "variable": "strong_analgesic_use_frequency",
         "domain": "TRT",
         "table": "questionnaire",
@@ -2738,7 +2738,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-019",
+        "id": "CDE-TRT-019",
         "variable": "narcotic_use_frequency",
         "domain": "TRT",
         "table": "questionnaire",
@@ -2748,7 +2748,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-020",
+        "id": "CDE-TRT-020",
         "variable": "antidepressant_use_frequency",
         "domain": "TRT",
         "table": "questionnaire",
@@ -2758,7 +2758,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-021",
+        "id": "CDE-TRT-021",
         "variable": "psychiatric_medication_use_frequency",
         "domain": "TRT",
         "table": "questionnaire",
@@ -2768,7 +2768,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-022",
+        "id": "CDE-TRT-022",
         "variable": "recent_medication_{option}",
         "domain": "TRT",
         "table": "questionnaire",
@@ -2778,7 +2778,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-TRT-023",
+        "id": "CDE-TRT-023",
         "variable": "medication_during_cce_{option}",
         "domain": "TRT",
         "table": "questionnaire",
@@ -2788,7 +2788,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-OUT-001",
+        "id": "CDE-OUT-001",
         "variable": "relapse_status",
         "domain": "OUT",
         "table": "subject",
@@ -2798,7 +2798,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-OUT-002",
+        "id": "CDE-OUT-002",
         "variable": "pfs_months",
         "domain": "OUT",
         "table": "subject",
@@ -2808,7 +2808,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-OUT-003",
+        "id": "CDE-OUT-003",
         "variable": "pfs_event",
         "domain": "OUT",
         "table": "subject",
@@ -2818,7 +2818,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-OUT-004",
+        "id": "CDE-OUT-004",
         "variable": "disease_free_interval_months",
         "domain": "OUT",
         "table": "subject",
@@ -2828,7 +2828,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-OUT-005",
+        "id": "CDE-OUT-005",
         "variable": "os_months",
         "domain": "OUT",
         "table": "subject",
@@ -2838,7 +2838,7 @@
         "range": ">= 0"
       },
       {
-        "id": "SEARCH-OUT-006",
+        "id": "CDE-OUT-006",
         "variable": "vital_status",
         "domain": "OUT",
         "table": "subject",
@@ -2848,7 +2848,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-OUT-007",
+        "id": "CDE-OUT-007",
         "variable": "lost_to_follow_up",
         "domain": "OUT",
         "table": "subject",
@@ -2858,7 +2858,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-OUT-008",
+        "id": "CDE-OUT-008",
         "variable": "cervical_management_recommendation",
         "domain": "OUT",
         "table": "subject",
@@ -2868,7 +2868,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-001",
+        "id": "CDE-PRO-001",
         "variable": "pss10_item_{01-10}",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2878,7 +2878,7 @@
         "range": "0-4"
       },
       {
-        "id": "SEARCH-PRO-002",
+        "id": "CDE-PRO-002",
         "variable": "pss10_total_score",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2888,7 +2888,7 @@
         "range": "0-40"
       },
       {
-        "id": "SEARCH-PRO-003",
+        "id": "CDE-PRO-003",
         "variable": "health_literacy_item_{01-10}",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2898,7 +2898,7 @@
         "range": "0-4"
       },
       {
-        "id": "SEARCH-PRO-004",
+        "id": "CDE-PRO-004",
         "variable": "discomfort_{procedure}_{context}_{expected|experienced}_vas",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2908,7 +2908,7 @@
         "range": "0-100"
       },
       {
-        "id": "SEARCH-PRO-005",
+        "id": "CDE-PRO-005",
         "variable": "constipation_last_week",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2918,7 +2918,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-006",
+        "id": "CDE-PRO-006",
         "variable": "post_{procedure}_bloating",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2928,7 +2928,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-007",
+        "id": "CDE-PRO-007",
         "variable": "post_{procedure}_abdominal_pain",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2938,7 +2938,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-008",
+        "id": "CDE-PRO-008",
         "variable": "post_{procedure}_bleeding",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2948,7 +2948,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-009",
+        "id": "CDE-PRO-009",
         "variable": "post_{procedure}_other_discomfort",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2958,7 +2958,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-010",
+        "id": "CDE-PRO-010",
         "variable": "post_{procedure}_contacted_healthcare",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2968,7 +2968,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-011",
+        "id": "CDE-PRO-011",
         "variable": "post_{procedure}_contact_{own_doctor|hospital|project_nurse|other}",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2978,7 +2978,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-012",
+        "id": "CDE-PRO-012",
         "variable": "sedentary_time_during_cce_min",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2988,7 +2988,7 @@
         "range": "0-1440"
       },
       {
-        "id": "SEARCH-PRO-013",
+        "id": "CDE-PRO-013",
         "variable": "moderate_activity_time_during_cce_min",
         "domain": "PRO",
         "table": "questionnaire",
@@ -2998,7 +2998,7 @@
         "range": "0-1440"
       },
       {
-        "id": "SEARCH-PRO-014",
+        "id": "CDE-PRO-014",
         "variable": "exercise_time_during_cce_min",
         "domain": "PRO",
         "table": "questionnaire",
@@ -3008,7 +3008,7 @@
         "range": "0-1440"
       },
       {
-        "id": "SEARCH-PRO-015",
+        "id": "CDE-PRO-015",
         "variable": "work_absence_{procedure}",
         "domain": "PRO",
         "table": "questionnaire",
@@ -3018,7 +3018,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-016",
+        "id": "CDE-PRO-016",
         "variable": "work_absence_days_{procedure}",
         "domain": "PRO",
         "table": "questionnaire",
@@ -3028,7 +3028,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-017",
+        "id": "CDE-PRO-017",
         "variable": "social_cancellation_{procedure}",
         "domain": "PRO",
         "table": "questionnaire",
@@ -3038,7 +3038,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-018",
+        "id": "CDE-PRO-018",
         "variable": "transport_mode_{option}",
         "domain": "PRO",
         "table": "questionnaire",
@@ -3048,7 +3048,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-019",
+        "id": "CDE-PRO-019",
         "variable": "information_source_{option}",
         "domain": "PRO",
         "table": "questionnaire",
@@ -3058,7 +3058,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-PRO-020",
+        "id": "CDE-PRO-020",
         "variable": "questionnaire_free_text",
         "domain": "PRO",
         "table": "questionnaire",
@@ -3068,7 +3068,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ADM-001",
+        "id": "CDE-ADM-001",
         "variable": "consent_given",
         "domain": "ADM",
         "table": "subject",
@@ -3078,7 +3078,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ADM-002",
+        "id": "CDE-ADM-002",
         "variable": "questionnaire_type",
         "domain": "ADM",
         "table": "questionnaire",
@@ -3088,7 +3088,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ADM-003",
+        "id": "CDE-ADM-003",
         "variable": "questionnaire_start_day",
         "domain": "ADM",
         "table": "questionnaire",
@@ -3098,7 +3098,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ADM-004",
+        "id": "CDE-ADM-004",
         "variable": "questionnaire_start_time",
         "domain": "ADM",
         "table": "questionnaire",
@@ -3108,7 +3108,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ADM-005",
+        "id": "CDE-ADM-005",
         "variable": "q1_completed",
         "domain": "ADM",
         "table": "subject",
@@ -3118,7 +3118,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ADM-006",
+        "id": "CDE-ADM-006",
         "variable": "study_dropout",
         "domain": "ADM",
         "table": "subject",
@@ -3128,7 +3128,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ADM-007",
+        "id": "CDE-ADM-007",
         "variable": "video_extracted",
         "domain": "ADM",
         "table": "event",
@@ -3138,7 +3138,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ADM-008",
+        "id": "CDE-ADM-008",
         "variable": "radiomics_output_available",
         "domain": "ADM",
         "table": "subject",
@@ -3148,7 +3148,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ADM-009",
+        "id": "CDE-ADM-009",
         "variable": "index_date",
         "domain": "ADM",
         "table": "local only",
@@ -3158,7 +3158,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ANN-001",
+        "id": "CDE-ANN-001",
         "variable": "polyp_match_certainty",
         "domain": "ANN",
         "table": "annotation",
@@ -3168,7 +3168,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ANN-002",
+        "id": "CDE-ANN-002",
         "variable": "matched_cce_polyp_id",
         "domain": "ANN",
         "table": "annotation",
@@ -3178,7 +3178,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ANN-003",
+        "id": "CDE-ANN-003",
         "variable": "matched_oc_polyp_id",
         "domain": "ANN",
         "table": "annotation",
@@ -3188,7 +3188,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ANN-004",
+        "id": "CDE-ANN-004",
         "variable": "matched_pathology_polyp_id",
         "domain": "ANN",
         "table": "annotation",
@@ -3198,7 +3198,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ANN-005",
+        "id": "CDE-ANN-005",
         "variable": "ai_project_{option}",
         "domain": "ANN",
         "table": "annotation",
@@ -3208,7 +3208,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ANN-006",
+        "id": "CDE-ANN-006",
         "variable": "annotation_required",
         "domain": "ANN",
         "table": "event",
@@ -3218,7 +3218,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ANN-007",
+        "id": "CDE-ANN-007",
         "variable": "annotation_completed",
         "domain": "ANN",
         "table": "event",
@@ -3228,7 +3228,7 @@
         "range": ""
       },
       {
-        "id": "SEARCH-ANN-008",
+        "id": "CDE-ANN-008",
         "variable": "annotation_cce_polyp_count",
         "domain": "ANN",
         "table": "event",
@@ -3238,7 +3238,7 @@
         "range": "0-100"
       },
       {
-        "id": "SEARCH-ANN-009",
+        "id": "CDE-ANN-009",
         "variable": "annotation_oc_verified_polyp_count",
         "domain": "ANN",
         "table": "event",
@@ -3802,7 +3802,7 @@
       {
         "id": "QC-03",
         "appliesTo": "All tables",
-        "rule": "Column names equal the SEARCH variable names, plus optional <variable>_dar and <variable>_comparator companion columns; no other columns.",
+        "rule": "Column names equal the catalogue variable names, plus optional <variable>_dar and <variable>_comparator companion columns; no other columns.",
         "type": "Structure",
         "severity": "error",
         "action": "Fix names."

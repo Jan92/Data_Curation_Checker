@@ -3143,7 +3143,7 @@ export function validateFhirObservations(content: string, options?: ValidateOpti
  * Full DCC quality-gate entry point (shared by Angular UI and Node CLI).
  *
  * Routing:
- * 1. SEARCH codification config → QC-01 to QC-40 on a curated CSV export.
+ * 1. Common codification config → QC-01 to QC-40 on a curated CSV export.
  * 2. Study/CSV config and a CSV or multi-CSV package → tabular dictionary suites.
  * 3. Otherwise → FHIR Observation / DiagnosticReport parse + check pipeline.
  *
@@ -3167,7 +3167,7 @@ export function runDataCurationCheck(content: string, options?: ValidateOptions)
           : []
   });
 
-  if (config.snapshot.searchCodification) {
+  if (config.snapshot.codification) {
     return runSearchCodificationCheck(content, config, runContext, source);
   }
 

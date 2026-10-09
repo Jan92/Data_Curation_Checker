@@ -2,7 +2,7 @@
   <header class="app-header">
     <div class="brand-block">
       <p class="brand-kicker">Data Curation Checker <span class="version-pill">v{{ toolVersion }}</span></p>
-      <h1>SEARCH codification gate</h1>
+      <h1>Common codification gate</h1>
       <p class="subtitle">
         Check a curated CSV export against the Common Codification Guideline v2.0: eight tables, one name and one unit per variable, and QC-01 to QC-40. Processing stays in this browser.
       </p>
@@ -56,7 +56,7 @@
     <div class="guide-intro">
       <h2>How this website works</h2>
       <p>
-        Load a curated SEARCH export, run QC-01 to QC-40, then export the report for the data provider.
+        Load a curated export, run QC-01 to QC-40, then export the report for the data provider.
         Errors reject the file. Warnings are corrected or explained in the submission note.
       </p>
     </div>
@@ -72,7 +72,7 @@
       </li>
       <li>
         <strong>Run the gate</strong>
-        <span>The active preset is SEARCH codification v2.0: 310 variables, 67 value sets, 40 rules.</span>
+        <span>The active preset is Common codification v2.0: 310 variables, 67 value sets, 40 rules.</span>
       </li>
       <li>
         <strong>Read errors and warnings apart</strong>
@@ -83,7 +83,7 @@
     <section class="guide-rules" aria-label="Six codification rules">
       <h3>Six rules on every export</h3>
       <ul class="rule-list">
-        <li><strong>One name</strong><span>The column is the SEARCH variable, not the local field name.</span></li>
+        <li><strong>One name</strong><span>The column is the catalogue variable, not the local field name.</span></li>
         <li><strong>One unit</strong><span>The unit sits in the name. The cell is only the number.</span></li>
         <li><strong>Coded values</strong><span>A code is from that variable’s value set, or a data-absent reason.</span></li>
         <li><strong>Missing values</strong><span>Say why. Do not use 999, NA, Blank, or an empty cell that secretly means zero.</span></li>
@@ -113,17 +113,17 @@
         Download configs and sample packages to inspect offline, share with data providers, or run via CLI.
       </p>
       <div class="download-grid">
-        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/search-codification-v2.json')" [disabled]="isProcessing">
-          <strong>SEARCH config</strong>
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/common-codification-v2.json')" [disabled]="isProcessing">
+          <strong>Codification config</strong>
           <span>QC-01 to QC-40 catalogue</span>
         </button>
-        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/samples/search-codification-v2-failed.json')" [disabled]="isProcessing">
-          <strong>SEARCH failing sample</strong>
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/samples/common-codification-v2-failed.json')" [disabled]="isProcessing">
+          <strong>Failing sample</strong>
           <span>planted export</span>
         </button>
-        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/samples/search-codification-v2-valid.json')" [disabled]="isProcessing">
-          <strong>SEARCH passing sample</strong>
-          <span>five-person export</span>
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/samples/common-codification-v2-valid.json')" [disabled]="isProcessing">
+          <strong>Passing sample</strong>
+          <span>ten-person cohort</span>
         </button>
         <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/fhir-lab-v1.json')" [disabled]="isProcessing">
           <strong>FHIR Lab config</strong>
@@ -145,9 +145,9 @@
           <strong>Current preset sample</strong>
           <span>{{ selectedPreset?.samplePath || 'generated FHIR sample' }}</span>
         </button>
-        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/samples/search-dictionary-demo.xlsx')" [disabled]="isProcessing">
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/samples/dictionary-demo.xlsx')" [disabled]="isProcessing">
           <strong>Sample data dictionary</strong>
-          <span>search-dictionary-demo.xlsx</span>
+          <span>dictionary-demo.xlsx</span>
         </button>
       </div>
       <p class="guide-repo">
@@ -188,7 +188,7 @@
         </label>
         <label class="field">
           <span>Study ID</span>
-          <input type="text" [(ngModel)]="studyId" [disabled]="isProcessing" placeholder="SEARCH" autocomplete="off" />
+          <input type="text" [(ngModel)]="studyId" [disabled]="isProcessing" placeholder="CC-V2" autocomplete="off" />
         </label>
         <label class="field">
           <span>Dictionary ref</span>
@@ -236,7 +236,7 @@
             aria-label="Select validation preset"
           >
             <option value="" disabled>Select a preset…</option>
-            <optgroup label="SEARCH codification">
+            <optgroup label="Common codification">
               <option *ngFor="let p of searchPresets; trackBy: trackByPreset" [value]="p.id">{{ p.label }}</option>
             </optgroup>
             <optgroup label="FHIR laboratory">
@@ -290,9 +290,9 @@
             class="link"
             type="button"
             (click)="resetConfig()"
-            [disabled]="isProcessing || effectiveConfig.id === 'search-codification-v2'"
+            [disabled]="isProcessing || effectiveConfig.id === 'common-codification-v2'"
           >
-            Reset to SEARCH
+            Reset to default
           </button>
         </div>
         <p class="config-error" *ngIf="configLoadError" role="alert">{{ configLoadError }}</p>
@@ -300,7 +300,7 @@
 
       <h2>Export</h2>
       <p class="panel-lead">
-        A SEARCH CSV package, or — with another preset — FHIR JSON, a SHIELD package, or an Excel dictionary. Max 10&nbsp;MB.
+        A curated CSV package, or — with another preset — FHIR JSON, a SHIELD package, or an Excel dictionary. Max 10&nbsp;MB.
       </p>
 
       <div class="panel-block">
@@ -356,15 +356,15 @@
 
       <div class="demo-section">
         <div class="demo-copy">
-          <h3>Try the SEARCH gate</h3>
-          <p>The sample is pasted above and the rules run immediately. One export is planted to fail. The other is a small file that passes.</p>
+          <h3>Try the codification gate</h3>
+          <p>The sample is pasted above and the rules run immediately. Failing export plants one problem for every rule. Passing export is a ten-person cohort across subject, event, questionnaire, and treatment.</p>
         </div>
         <button
           class="demo-button"
           type="button"
           (click)="showSearchCodificationDemo()"
           [disabled]="isProcessing"
-          aria-label="Load the failing SEARCH export and run the quality gate"
+          aria-label="Load the failing export and run the quality gate"
         >
           Failing export
         </button>
@@ -373,7 +373,7 @@
           type="button"
           (click)="showSearchPassDemo()"
           [disabled]="isProcessing"
-          aria-label="Load the passing SEARCH export and run the quality gate"
+          aria-label="Load the passing export and run the quality gate"
         >
           Passing export
         </button>
@@ -459,12 +459,12 @@
       >
         <span class="gate-label">Quality gate</span>
         <strong class="gate-value">{{ gate }}</strong>
-        <p *ngIf="gate === 'PASS' && lastParsedType === 'search-package'">Error-level checks passed. Review any warnings, then the export can be submitted.</p>
-        <p *ngIf="gate === 'PASS' && lastParsedType !== 'Excel data dictionary' && lastParsedType !== 'search-package'">Dataset may proceed to transfer / platform upload.</p>
+        <p *ngIf="gate === 'PASS' && lastParsedType === 'codification-package'">Error-level checks passed. Review any warnings, then the export can be submitted.</p>
+        <p *ngIf="gate === 'PASS' && lastParsedType !== 'Excel data dictionary' && lastParsedType !== 'codification-package'">Dataset may proceed to transfer / platform upload.</p>
         <p *ngIf="gate === 'PASS' && lastParsedType === 'Excel data dictionary' && !dictionaryAdopted">No blocking dictionary defects. Adopt it as the validation config before checking a data extract.</p>
         <p *ngIf="gate === 'PASS' && lastParsedType === 'Excel data dictionary' && dictionaryAdopted">This dictionary is the active config. Load the CSV extract and run the gate again.</p>
-        <p *ngIf="gate === 'FAIL' && lastParsedType === 'search-package'">Export rejected. Fix every error. Correct each warning or explain it in the submission note.</p>
-        <p *ngIf="gate === 'FAIL' && lastParsedType !== 'Excel data dictionary' && lastParsedType !== 'search-package'">Dataset rejected — notify the data provider with the issues below.</p>
+        <p *ngIf="gate === 'FAIL' && lastParsedType === 'codification-package'">Export rejected. Fix every error. Correct each warning or explain it in the submission note.</p>
+        <p *ngIf="gate === 'FAIL' && lastParsedType !== 'Excel data dictionary' && lastParsedType !== 'codification-package'">Dataset rejected — notify the data provider with the issues below.</p>
         <p *ngIf="gate === 'FAIL' && lastParsedType === 'Excel data dictionary' && !dictionaryAdopted">Dictionary has blocking defects. You can still adopt the compiled field list, then fix the errors before relying on it.</p>
         <p *ngIf="gate === 'FAIL' && lastParsedType === 'Excel data dictionary' && dictionaryAdopted">This dictionary is the active config, and it has blocking defects. Fix those before relying on a CSV extract.</p>
       </div>

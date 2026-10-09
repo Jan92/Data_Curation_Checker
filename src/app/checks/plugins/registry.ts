@@ -110,8 +110,8 @@ export const BUILTIN_PLUGINS: BuiltinPlugin[] = [
     category: 'reproducibility'
   },
   {
-    id: 'search-qc',
-    description: 'SEARCH Common Codification QC-01 to QC-40 for a curated tabular export',
+    id: 'codification-qc',
+    description: 'Common codification QC-01 to QC-40 for a curated tabular export',
     category: 'policy'
   }
 ];

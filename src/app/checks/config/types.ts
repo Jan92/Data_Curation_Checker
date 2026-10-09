@@ -119,13 +119,13 @@ export interface ValidationConfig {
   /** If true, warnings also fail the gate (default false). */
   failOnWarn?: boolean;
   /**
-   * SEARCH Common Codification catalogue (CDEs, value sets, QC-01–QC-40).
-   * When present, the checker runs the SEARCH tabular rules instead of FHIR or SHIELD.
+   * Common codification catalogue (CDEs, value sets, QC-01–QC-40).
+   * When present, the checker runs these tabular rules instead of FHIR or SHIELD.
    */
-  searchCodification?: SearchCodification;
+  codification?: SearchCodification;
 }
 
-/** One common data element from the SEARCH codification framework. */
+/** One common data element from the codification framework. */
 export interface SearchCde {
   id: string;
   variable: string;
@@ -138,7 +138,7 @@ export interface SearchCde {
   range?: string;
 }
 
-/** One QC rule from the SEARCH framework, sheet 9. */
+/** One QC rule from the codification framework. */
 export interface SearchQcRule {
   id: string;
   appliesTo: string;
@@ -148,7 +148,7 @@ export interface SearchQcRule {
   action: string;
 }
 
-/** Sanitized SEARCH v2 catalogue used to execute QC-01–QC-40. */
+/** Sanitized v2 catalogue used to execute QC-01–QC-40. */
 export interface SearchCodification {
   tables: string[];
   subjectIdPattern: string;

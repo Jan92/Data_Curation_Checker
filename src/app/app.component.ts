@@ -98,7 +98,7 @@ export class AppComponent {
   activeConfig: ValidationConfig = DEFAULT_FHIR_LAB_CONFIG;
   configSourceLabel = 'Built-in fhir-lab-v1';
   configLoadError: string | null = null;
-  selectedPresetId = 'search-codification-v2';
+  selectedPresetId = 'common-codification-v2';
   isLoadingPreset = false;
   private cachedEffectiveConfig: EffectiveConfigRef = resolveEffectiveConfig(DEFAULT_FHIR_LAB_CONFIG);
 
@@ -215,7 +215,7 @@ export class AppComponent {
   }
 
   get pastePlaceholder(): string {
-    if (this.activeConfig.searchCodification) {
+    if (this.activeConfig.codification) {
       return 'Paste one CSV, or a JSON map of <dataset>_<table>_<YYYYMMDD>.csv to CSV text.';
     }
     const tables = this.activeConfig.dictionarySource ? this.activeConfig.expectedFiles ?? [] : [];
@@ -226,15 +226,15 @@ export class AppComponent {
   }
 
   get pasteHint(): string {
-    if (this.activeConfig.searchCodification) {
+    if (this.activeConfig.codification) {
       return 'Eight tables: subject, event, lesion, specimen, treatment, questionnaire, annotation, image. Comma-separated, UTF-8, dot decimals.';
     }
     return 'FHIR Observation/DiagnosticReport, a SHIELD package, or a CSV extract for the active dictionary.';
   }
 
-  /** SEARCH runs are grouped the way guideline section 13 separates errors, warnings, and info. */
+  /** Codification runs are grouped the way the guideline separates errors, warnings, and info. */
   get searchRuleGroups(): Array<{ title: string; lead: string; results: CheckResult[] }> | null {
-    const search = this.lastRunReport?.config.snapshot.searchCodification ?? this.activeConfig.searchCodification;
+    const search = this.lastRunReport?.config.snapshot.codification ?? this.activeConfig.codification;
     if (!search || !this.checkResults.length) return null;
     const errorIds = new Set(
       search.rules.filter((rule) => rule.severity === 'error').map((rule) => rule.id)
@@ -481,7 +481,7 @@ export class AppComponent {
 
   resetConfig(): void {
     this.configLoadError = null;
-    this.selectedPresetId = 'search-codification-v2';
+    this.selectedPresetId = 'common-codification-v2';
     this.dictionaryReady = null;
     this.dictionaryAdopted = false;
     if (this.configInput?.nativeElement) {
@@ -521,30 +521,30 @@ export class AppComponent {
     void this.runPresetDemo();
   }
 
-  /** Select the SEARCH codification preset, load the planted export, and run the gate. */
+  /** Select the codification preset, load the planted export, and run the gate. */
   showSearchCodificationDemo(): void {
-    this.selectedPresetId = 'search-codification-v2';
+    this.selectedPresetId = 'common-codification-v2';
     void this.runPresetDemo();
   }
 
-  /** Same SEARCH rules on a small export that should pass. */
+  /** Same rules on a ten-person cohort that should pass. */
   showSearchPassDemo(): void {
     void this.loadSearchPassDemo();
   }
 
   private async loadSearchPassDemo(): Promise<void> {
-    this.selectedPresetId = 'search-codification-v2';
+    this.selectedPresetId = 'common-codification-v2';
     await this.applySelectedPreset();
     if (this.configLoadError) return;
     try {
-      const text = await fetchTextAsset('configs/samples/search-codification-v2-valid.json');
+      const text = await fetchTextAsset('configs/samples/common-codification-v2-valid.json');
       this.clearFile();
       this.inputText = text;
       this.sampleBrief =
-        'Five people in DS01, with subject and event files named as the guideline asks. Error-level checks pass. Rules whose columns are not in this small export are marked N/A.';
+        'Ten people in DS01: five women aged 44 born in DK and five men aged 52 born in SE, all seen at site 1. Subject, event, questionnaire, and treatment files use the guideline file names. Labs, BMI, BSA, and the left-ventricular volumes agree. No polyps were found. Consent is recorded. Error-level checks pass. Rules for columns this cohort does not export are marked N/A.';
       await this.runCheck();
     } catch (error) {
-      this.validationError = this.toErrorMessage(error, 'Could not load the passing SEARCH sample.');
+      this.validationError = this.toErrorMessage(error, 'Could not load the passing sample.');
     }
   }
 
@@ -569,8 +569,8 @@ export class AppComponent {
     this.validationError = null;
     this.isLoadingPreset = true;
     try {
-      const bytes = await fetchBinaryAsset('configs/samples/search-dictionary-demo.xlsx');
-      const file = new File([bytes], 'search-dictionary-demo.xlsx', {
+      const bytes = await fetchBinaryAsset('configs/samples/dictionary-demo.xlsx');
+      const file = new File([bytes], 'dictionary-demo.xlsx', {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       this.inputText = '';

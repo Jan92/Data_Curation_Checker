@@ -55,7 +55,7 @@ Multi-table packages can be supplied as a JSON map of `tableName → CSV text`, 
 
 ## Excel data dictionaries
 
-Study catalogues such as the SEARCH cervical and ovarian workbooks are field lists, not patient tables. The checker reads that shape without hardcoding either workbook:
+Study catalogues such as cervical and ovarian field workbooks are field lists, not patient tables. The checker reads that shape without hardcoding either workbook:
 
 | Column role | Typical header |
 |-------------|----------------|
@@ -93,7 +93,7 @@ npm run check:dictionary
 2. **Adopt** it with **Use as validation config**. Categories become tables. Trimmed field names become column headers. **Download compiled config** saves that schema as JSON.
 3. **Check the extract.** Paste or upload CSV, or a JSON map of table name to CSV text. Headers must match the dictionary. One category is one file (`follow_up.csv`, …).
 
-On a phone or tablet the guide starts collapsed. **Show guide** opens the same three steps. The sample workbooks under `configs/samples/search-dictionary-*.xlsx` are synthetic. They follow the catalogue layout; they are not copies of a study dictionary.
+On a phone or tablet the guide starts collapsed. **Show guide** opens the same three steps. The sample workbooks under `configs/samples/dictionary-*.xlsx` are synthetic. They follow the catalogue layout; they are not copies of a study dictionary.
 
 Regenerate them with `python3 scripts/build-dictionary-fixtures.py` (needs `openpyxl`). `npm run check:dictionary` checks both fixtures and, when given extra paths, prints a summary of those workbooks.
 

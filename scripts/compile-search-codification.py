@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Compile a sanitized SEARCH codification config from the framework workbook.
+"""Compile a sanitized common-codification config from the framework workbook.
 
 Reads sheets 3 (conventions, when present), 4 (CDEs), 5 (value sets) and 9 (QC rules).
 Omits partner registers, source mappings, local value mappings and the issues log.
+Public output uses catalogue wording and does not repeat the source project name.
 
 Usage:
-  python3 scripts/compile-search-codification.py /path/to/SEARCH_Codification_Framework_v2.0.xlsx
+  python3 scripts/compile-search-codification.py /path/to/codification-framework.xlsx
 """
 
 import json
@@ -14,6 +15,16 @@ import zipfile
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from pathlib import Path
+
+def public_id(value: str) -> str:
+    if value.startswith("SEARCH-"):
+        return "CDE-" + value[len("SEARCH-") :]
+    return value
+
+
+def public_text(value: str) -> str:
+    return value.replace("SEARCH variable names", "catalogue variable names").replace("SEARCH ", "")
+
 
 NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 REL = {"r": "http://schemas.openxmlformats.org/package/2006/relationships"}
@@ -124,7 +135,7 @@ def main():
         table = cell(row, pick(cde_h, "table")) or "all"
         cdes.append(
             {
-                "id": cell(row, pick(cde_h, "cde_id")),
+                "id": public_id(cell(row, pick(cde_h, "cde_id"))),
                 "variable": variable,
                 "domain": cell(row, pick(cde_h, "domain")),
                 "table": table,
@@ -153,7 +164,7 @@ def main():
             {
                 "id": rule_id,
                 "appliesTo": cell(row, pick(qc_h, "applies to")),
-                "rule": cell(row, pick(qc_h, "rule")),
+                "rule": public_text(cell(row, pick(qc_h, "rule"))),
                 "type": cell(row, pick(qc_h, "type")),
                 "severity": severity.get(raw, "warn"),
                 "action": cell(row, pick(qc_h, "action if violated")),
@@ -172,27 +183,27 @@ def main():
     ]
 
     config = {
-        "id": "search-codification-v2",
+        "id": "common-codification-v2",
         "version": "2.0",
-        "name": "SEARCH Common Codification v2.0",
-        "description": "QC-01 to QC-40 for a curated SEARCH tabular export (CSV). Compiled from the codification framework without partner mappings or the issues log.",
-        "formats": ["csv", "search-package"],
-        "studyId": "SEARCH",
-        "dictionaryRef": "SEARCH Common Codification Guideline v2.0",
+        "name": "Common Codification v2.0",
+        "description": "QC-01 to QC-40 for a curated tabular export (CSV). Compiled from the codification framework without partner mappings or the issues log.",
+        "formats": ["csv", "codification-package"],
+        "studyId": "CC-V2",
+        "dictionaryRef": "Common Codification Guideline v2.0",
         "metadataRequirements": ["license", "provenance"],
-        "plugins": ["search-qc", "metadata-requirements", "reproducibility"],
+        "plugins": ["codification-qc", "metadata-requirements", "reproducibility"],
         "failOnError": True,
         "failOnWarn": False,
         "entities": [
             {
                 "name": table,
                 "table": f"{table}.csv",
-                "description": f"SEARCH {table} table",
+                "description": f"{table} table",
                 "fields": [{"name": "subject_id", "required": True}],
             }
             for table in export_tables
         ],
-        "searchCodification": {
+        "codification": {
             "tables": export_tables,
             "subjectIdPattern": r"^DS\d{2}-[A-Z0-9]{8}$",
             "darCodes": [
@@ -225,10 +236,10 @@ def main():
         },
     }
 
-    out = Path(__file__).resolve().parents[1] / "configs" / "search-codification-v2.json"
+    out = Path(__file__).resolve().parents[1] / "configs" / "common-codification-v2.json"
     out.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {out}")
-    print(f"CDEs {len(cdes)}  value sets {len(value_sets)}  rules {len(rules)}  tables {config['searchCodification']['tables']}")
+    print(f"CDEs {len(cdes)}  value sets {len(value_sets)}  rules {len(rules)}  tables {config['codification']['tables']}")
     print("RULES")
     for rule in rules:
         print(f"{rule['id']}\t{rule['severity']}\t{rule['rule']}")

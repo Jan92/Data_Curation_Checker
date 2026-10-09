@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rebuild the synthetic Excel data-dictionary fixtures.
 
-These workbooks follow the SEARCH catalogue layout (category, blank index
+These workbooks follow the study-catalogue layout (category, blank index
 column, field, type, format, acceptable values, existing values, required,
 null). They are not copies of a study dictionary.
 
@@ -102,6 +102,6 @@ def build_clean(path: Path) -> None:
 
 
 if __name__ == "__main__":
-    build_demo(OUT / "search-dictionary-demo.xlsx")
-    build_clean(OUT / "search-dictionary-clean.xlsx")
+    build_demo(OUT / "dictionary-demo.xlsx")
+    build_clean(OUT / "dictionary-clean.xlsx")
     print(f"Wrote fixtures in {OUT}")

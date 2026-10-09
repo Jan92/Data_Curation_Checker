@@ -134,17 +134,17 @@ export const DCC_PRESETS: DccPreset[] = [
     }
   },
   {
-    id: 'search-codification-v2',
-    label: 'SEARCH codification v2',
+    id: 'common-codification-v2',
+    label: 'Common codification v2',
     description:
-      'QC-01 to QC-40 on a small curated export planted so the gate fails. Run the preset demo to see every codification rule.',
+      'QC-01 to QC-40 on a curated CSV export. Run the preset demo to see a planted failure. Passing export is a ten-person cohort that clears the gate.',
     kind: 'search',
-    configPath: 'configs/search-codification-v2.json',
-    samplePath: 'configs/samples/search-codification-v2-failed.json',
+    configPath: 'configs/common-codification-v2.json',
+    samplePath: 'configs/samples/common-codification-v2-failed.json',
     defaults: {
-      studyId: 'SEARCH',
-      dictionaryRef: 'SEARCH Common Codification Guideline v2.0',
-      datasetId: 'search-codification-demo',
+      studyId: 'CC-V2',
+      dictionaryRef: 'Common Codification Guideline v2.0',
+      datasetId: 'common-codification-demo',
       sourceSite: 'local-lab',
       license: 'internal',
       provenance: 'ui-demo'

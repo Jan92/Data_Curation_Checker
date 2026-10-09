@@ -1,5 +1,5 @@
 /**
- * SEARCH Common Codification v2 quality gate (QC-01–QC-40).
+ * Common Codification v2 quality gate (QC-01–QC-40).
  *
  * Runs on a curated tabular export: one CSV, or a JSON object of
  * `<dataset>_<table>_<YYYYMMDD>.csv` → CSV text. The catalogue (CDEs,
@@ -245,9 +245,9 @@ export function runSearchCodificationCheck(
   runContext: DatasetRunContext,
   source: string
 ): DccRunReport {
-  const catalog = config.snapshot.searchCodification;
+  const catalog = config.snapshot.codification;
   if (!catalog) {
-    throw new Error('SEARCH codification catalogue is missing from the active config.');
+    throw new Error('Codification catalogue is missing from the active config.');
   }
   return new SearchQcRunner(content, config, runContext, source, catalog).run();
 }
@@ -296,7 +296,7 @@ class SearchQcRunner {
       summarizeSuite({
         id: 'ingest',
         label: 'Ingest & parse',
-        description: 'Parse a SEARCH CSV export or multi-table package.',
+        description: 'Parse a curated CSV export or multi-table package.',
         category: 'ingest',
         enabled: true,
         issues: this.parseIssues
@@ -330,7 +330,7 @@ class SearchQcRunner {
 
     const parseResult: ParseResult = {
       ok: this.parsedOk,
-      type: 'search-package',
+      type: 'codification-package',
       resources: [],
       diagnosticReports: [],
       error: this.parsedOk ? undefined : this.parseIssues[0]?.detail
@@ -450,7 +450,7 @@ class SearchQcRunner {
         issue({
           severity: 'error',
           label: 'Empty input',
-          detail: 'A SEARCH export needs at least one CSV table.',
+          detail: 'A curated export needs at least one CSV table.',
           location: this.source,
           code: 'EMPTY_INPUT',
           category: 'ingest',
@@ -472,7 +472,7 @@ class SearchQcRunner {
             label: 'Package parse failed',
             detail: 'The JSON package could not be parsed.',
             location: this.source,
-            code: 'SEARCH_PARSE_FAILED',
+            code: 'PACKAGE_PARSE_FAILED',
             category: 'ingest',
             suiteId: 'ingest'
           })
@@ -484,9 +484,9 @@ class SearchQcRunner {
           issue({
             severity: 'error',
             label: 'Package parse failed',
-            detail: 'A SEARCH package is a JSON object of file name to CSV text.',
+            detail: 'A package is a JSON object of file name to CSV text.',
             location: this.source,
-            code: 'SEARCH_PARSE_FAILED',
+            code: 'PACKAGE_PARSE_FAILED',
             category: 'ingest',
             suiteId: 'ingest'
           })
@@ -501,7 +501,7 @@ class SearchQcRunner {
               label: 'Package parse failed',
               detail: `Entry "${name}" is not CSV text.`,
               location: name,
-              code: 'SEARCH_PARSE_FAILED',
+              code: 'PACKAGE_PARSE_FAILED',
               category: 'ingest',
               suiteId: 'ingest'
             })
@@ -515,9 +515,9 @@ class SearchQcRunner {
         issue({
           severity: 'error',
           label: 'Wrong format',
-          detail: 'This config checks a SEARCH CSV export. The input looks like FHIR JSON.',
+          detail: 'This config checks a curated CSV export. The input looks like FHIR JSON.',
           location: this.source,
-          code: 'SEARCH_PARSE_FAILED',
+          code: 'PACKAGE_PARSE_FAILED',
           category: 'ingest',
           suiteId: 'ingest'
         })
@@ -532,7 +532,7 @@ class SearchQcRunner {
         issue({
           severity: 'error',
           label: 'Empty package',
-          detail: 'The SEARCH package has no files.',
+          detail: 'The package has no files.',
           location: this.source,
           code: 'EMPTY_INPUT',
           category: 'ingest',
@@ -718,7 +718,7 @@ class SearchQcRunner {
           'QC-01',
           'error',
           'subject_id missing',
-          'Every SEARCH table carries subject_id.',
+          'Every table carries subject_id.',
           file.fileName,
           'subject_id'
         );
@@ -795,7 +795,7 @@ class SearchQcRunner {
           forbidden ? 'Local-only column exported' : 'Identifier column',
           forbidden
             ? `${header.header} is a local-only field (calendar dates are not exported).`
-            : `${header.header} looks like a direct identifier and is not a SEARCH variable.`,
+            : `${header.header} looks like a direct identifier and is not a catalogue variable.`,
           file.fileName,
           header.header
         );
@@ -837,7 +837,7 @@ class SearchQcRunner {
           'QC-03',
           'error',
           'Unknown table',
-          `The file is not one of the SEARCH tables (${EXPORT_TABLES.join(', ')}).`,
+          `The file is not one of the export tables (${EXPORT_TABLES.join(', ')}).`,
           file.fileName
         );
       }
@@ -856,7 +856,7 @@ class SearchQcRunner {
             'QC-03',
             'error',
             'Unknown column',
-            `${header.header} is not a SEARCH variable for ${file.table ?? 'this file'}, and it is not a _dar or _comparator companion.`,
+            `${header.header} is not a catalogue variable for ${file.table ?? 'this file'}, and it is not a _dar or _comparator companion.`,
             file.fileName,
             header.header
           );
@@ -883,7 +883,7 @@ class SearchQcRunner {
           'QC-04',
           'error',
           'Delimiter',
-          'The file is not comma-separated. SEARCH exports use a comma delimiter.',
+          'The file is not comma-separated. Exports use a comma delimiter.',
           file.fileName
         );
       }
@@ -892,7 +892,7 @@ class SearchQcRunner {
           'QC-04',
           'error',
           'Encoding',
-          'The file contains a Unicode replacement character. SEARCH exports are UTF-8.',
+          'The file contains a Unicode replacement character. Exports are UTF-8.',
           file.fileName
         );
       }
