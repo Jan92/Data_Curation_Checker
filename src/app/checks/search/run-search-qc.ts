@@ -38,7 +38,7 @@ const IDENTIFIER_COLUMN =
 
 const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?$/;
-const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const TIME = /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/;
 const COMPARATORS = new Set(['<', '<=', '>', '>=', '=']);
 
 const FIGO_OVARIAN = new Set([
@@ -908,7 +908,7 @@ class SearchQcRunner {
             'QC-04',
             'error',
             'Time format',
-            'Time values use HH:MM.',
+            'Time values use HH:MM or HH:MM:SS.',
             this.loc(file, index + 2),
             header.header,
             value

@@ -221,6 +221,54 @@ h1 {
   line-height: 1.45;
 }
 
+.guide-rules {
+  margin-top: 18px;
+}
+
+.guide-rules h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #1c1917;
+}
+
+.rule-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rule-list li {
+  background: #fffdf8;
+  border: 1px solid #e6dfd4;
+  border-radius: 4px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rule-list strong {
+  font-size: 13px;
+  color: #1c1917;
+}
+
+.rule-list span {
+  font-size: 12px;
+  color: #514c45;
+  line-height: 1.45;
+}
+
+.guide-scope {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #514c45;
+  line-height: 1.5;
+  max-width: 52rem;
+}
+
 .guide-dictionary {
   margin-top: 18px;
   padding: 14px 16px;
@@ -1283,6 +1331,36 @@ h1 {
   color: #b91c1c;
 }
 
+.badge.na {
+  background: #f3efe4;
+  color: #6f675e;
+}
+
+.badge.info {
+  background: #e7eeea;
+  color: #234237;
+}
+
+.rule-group {
+  margin-top: 8px;
+}
+
+.rule-group + .rule-group {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid #e6dfd4;
+}
+
+.rule-group h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: #1c1917;
+}
+
+.rule-group .panel-lead {
+  margin-top: 0;
+}
+
 .placeholder {
   color: #8d8478;
   margin: 0;
@@ -1516,7 +1594,8 @@ h1 {
 
 /* Tablet */
 @media (max-width: 960px) {
-  .guide-steps {
+  .guide-steps,
+  .rule-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1531,7 +1610,9 @@ h1 {
 
 /* Phone / small tablet */
 @media (max-width: 720px) {
-  .capability-grid {
+  .capability-grid,
+  .rule-list,
+  .guide-steps {
     grid-template-columns: 1fr;
   }
 

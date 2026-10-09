@@ -98,7 +98,7 @@ export class AppComponent {
   activeConfig: ValidationConfig = DEFAULT_FHIR_LAB_CONFIG;
   configSourceLabel = 'Built-in fhir-lab-v1';
   configLoadError: string | null = null;
-  selectedPresetId = 'fhir-lab-v1';
+  selectedPresetId = 'search-codification-v2';
   isLoadingPreset = false;
   private cachedEffectiveConfig: EffectiveConfigRef = resolveEffectiveConfig(DEFAULT_FHIR_LAB_CONFIG);
 
@@ -139,6 +139,7 @@ export class AppComponent {
 
   constructor() {
     this.restoreRunContext();
+    void this.applySelectedPreset();
     const storedGuide = readLocalFlag(GUIDE_STORAGE_KEY);
     if (storedGuide !== null) {
       this.guideOpen = storedGuide;
@@ -214,11 +215,62 @@ export class AppComponent {
   }
 
   get pastePlaceholder(): string {
+    if (this.activeConfig.searchCodification) {
+      return 'Paste one CSV, or a JSON map of <dataset>_<table>_<YYYYMMDD>.csv to CSV text.';
+    }
     const tables = this.activeConfig.dictionarySource ? this.activeConfig.expectedFiles ?? [] : [];
     if (tables.length) {
       return `Paste one CSV, or a JSON map of ${tables.join(', ')} to CSV text. Headers must match the dictionary.`;
     }
     return 'Paste FHIR Bundle/array/resource/NDJSON, or a SHIELD multi-CSV package JSON…';
+  }
+
+  get pasteHint(): string {
+    if (this.activeConfig.searchCodification) {
+      return 'Eight tables: subject, event, lesion, specimen, treatment, questionnaire, annotation, image. Comma-separated, UTF-8, dot decimals.';
+    }
+    return 'FHIR Observation/DiagnosticReport, a SHIELD package, or a CSV extract for the active dictionary.';
+  }
+
+  /** SEARCH runs are grouped the way guideline section 13 separates errors, warnings, and info. */
+  get searchRuleGroups(): Array<{ title: string; lead: string; results: CheckResult[] }> | null {
+    const search = this.lastRunReport?.config.snapshot.searchCodification ?? this.activeConfig.searchCodification;
+    if (!search || !this.checkResults.length) return null;
+    const errorIds = new Set(
+      search.rules.filter((rule) => rule.severity === 'error').map((rule) => rule.id)
+    );
+    const infoIds = new Set(search.rules.filter((rule) => rule.severity === 'info').map((rule) => rule.id));
+    const packageIds = new Set(['ingest', 'metadata-requirements', 'reproducibility']);
+    const rules = this.checkResults.filter((result) => (result.suiteId ?? '').startsWith('QC-'));
+    const errors = rules.filter((result) => errorIds.has(result.suiteId ?? ''));
+    const info = rules.filter((result) => infoIds.has(result.suiteId ?? ''));
+    const warnings = rules.filter(
+      (result) => !errorIds.has(result.suiteId ?? '') && !infoIds.has(result.suiteId ?? '')
+    );
+    const pkg = this.checkResults.filter((result) => packageIds.has(result.suiteId ?? ''));
+    const failing = (list: CheckResult[]) => list.filter((result) => result.status !== 'ok').length;
+    return [
+      {
+        title: `Errors — must be fixed (${failing(errors)} of ${errors.length})`,
+        lead: 'These are the error-level checks from the guideline. Any error rejects the export.',
+        results: errors
+      },
+      {
+        title: `Warnings — correct or explain (${failing(warnings)} of ${warnings.length})`,
+        lead: 'Warnings do not reject the export by themselves. Each one is corrected or explained in the submission note.',
+        results: warnings
+      },
+      {
+        title: `Info (${failing(info)} of ${info.length})`,
+        lead: 'Clinical review. This does not reject the export.',
+        results: info
+      },
+      {
+        title: 'Package and audit',
+        lead: 'The file could be read, and the run can be repeated from the config hash.',
+        results: pkg
+      }
+    ];
   }
 
   get dictionaryStatusText(): string {
@@ -428,15 +480,14 @@ export class AppComponent {
   }
 
   resetConfig(): void {
-    this.setActiveConfig(DEFAULT_FHIR_LAB_CONFIG, 'Built-in fhir-lab-v1');
     this.configLoadError = null;
-    this.selectedPresetId = 'fhir-lab-v1';
+    this.selectedPresetId = 'search-codification-v2';
     this.dictionaryReady = null;
     this.dictionaryAdopted = false;
     if (this.configInput?.nativeElement) {
       this.configInput.nativeElement.value = '';
     }
-    this.clearResults();
+    void this.applySelectedPreset();
   }
 
   setResultTab(tab: ResultTab): void {
@@ -474,6 +525,27 @@ export class AppComponent {
   showSearchCodificationDemo(): void {
     this.selectedPresetId = 'search-codification-v2';
     void this.runPresetDemo();
+  }
+
+  /** Same SEARCH rules on a small export that should pass. */
+  showSearchPassDemo(): void {
+    void this.loadSearchPassDemo();
+  }
+
+  private async loadSearchPassDemo(): Promise<void> {
+    this.selectedPresetId = 'search-codification-v2';
+    await this.applySelectedPreset();
+    if (this.configLoadError) return;
+    try {
+      const text = await fetchTextAsset('configs/samples/search-codification-v2-valid.json');
+      this.clearFile();
+      this.inputText = text;
+      this.sampleBrief =
+        'Five people in DS01, with subject and event files named as the guideline asks. Error-level checks pass. Rules whose columns are not in this small export are marked N/A.';
+      await this.runCheck();
+    } catch (error) {
+      this.validationError = this.toErrorMessage(error, 'Could not load the passing SEARCH sample.');
+    }
   }
 
   /** Load the fixed chemistry panel that fails several laboratory check suites. */

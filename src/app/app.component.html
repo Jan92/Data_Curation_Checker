@@ -2,10 +2,9 @@
   <header class="app-header">
     <div class="brand-block">
       <p class="brand-kicker">Data Curation Checker <span class="version-pill">v{{ toolVersion }}</span></p>
-      <h1>Quality gate for curated datasets</h1>
+      <h1>SEARCH codification gate</h1>
       <p class="subtitle">
-        Validate FHIR laboratory resources, a SEARCH codification export, SHIELD study packages,
-        or an Excel data dictionary entirely in your browser. Same engine as the CLI — nothing is uploaded to a server.
+        Check a curated CSV export against the Common Codification Guideline v2.0: eight tables, one name and one unit per variable, and QC-01 to QC-40. Processing stays in this browser.
       </p>
       <div class="header-actions">
         <button
@@ -39,13 +38,13 @@
   </header>
 
   <nav class="workflow-strip" aria-label="Dataset upload workflow">
-    <span class="workflow-step">1. Curation</span>
+    <span class="workflow-step">1. Codify</span>
     <span class="workflow-arrow" aria-hidden="true">→</span>
-    <span class="workflow-step">2. Annotation</span>
+    <span class="workflow-step">2. Export CSV</span>
     <span class="workflow-arrow" aria-hidden="true">→</span>
-    <span class="workflow-step active">3. DCC quality gate</span>
+    <span class="workflow-step active">3. Quality gate</span>
     <span class="workflow-arrow" aria-hidden="true">→</span>
-    <span class="workflow-step">4. Transfer / upload</span>
+    <span class="workflow-step">4. Submit</span>
   </nav>
 
   <section
@@ -57,34 +56,49 @@
     <div class="guide-intro">
       <h2>How this website works</h2>
       <p>
-        Pick a preset (or upload your own config), load a dataset, run the gate, then export the report.
-        Processing stays on this device.
+        Load a curated SEARCH export, run QC-01 to QC-40, then export the report for the data provider.
+        Errors reject the file. Warnings are corrected or explained in the submission note.
       </p>
     </div>
 
     <ol class="guide-steps">
       <li>
-        <strong>Choose a validation config</strong>
-        <span>Use a website preset, upload JSON / YAML / CSV, or upload an Excel data dictionary (.xlsx).</span>
+        <strong>Export one CSV per table</strong>
+        <span>subject, event, lesion, specimen, treatment, questionnaire, annotation, image. Name each file &lt;dataset&gt;_&lt;table&gt;_&lt;YYYYMMDD&gt;.csv.</span>
       </li>
       <li>
-        <strong>Load your dataset</strong>
-        <span>Upload a file, paste JSON/CSV, or audit the sample Excel dictionary.</span>
+        <strong>Load it here</strong>
+        <span>Paste a single CSV or a JSON map of those file names to CSV text. Nothing is uploaded.</span>
       </li>
       <li>
-        <strong>Fill run context</strong>
-        <span>Dataset ID and source/site are stored with the audit report.</span>
+        <strong>Run the gate</strong>
+        <span>The active preset is SEARCH codification v2.0: 310 variables, 67 value sets, 40 rules.</span>
       </li>
       <li>
-        <strong>Run &amp; export</strong>
-        <span>PASS / FAIL plus JSON, Markdown, HTML, or Print / PDF.</span>
+        <strong>Read errors and warnings apart</strong>
+        <span>Fix every error. A warning does not fail the gate; it still needs a correction or a note.</span>
       </li>
     </ol>
 
-    <section class="guide-dictionary" aria-label="Excel data dictionary">
-      <h3>Excel data dictionary</h3>
+    <section class="guide-rules" aria-label="Six codification rules">
+      <h3>Six rules on every export</h3>
+      <ul class="rule-list">
+        <li><strong>One name</strong><span>The column is the SEARCH variable, not the local field name.</span></li>
+        <li><strong>One unit</strong><span>The unit sits in the name. The cell is only the number.</span></li>
+        <li><strong>Coded values</strong><span>A code is from that variable’s value set, or a data-absent reason.</span></li>
+        <li><strong>Missing values</strong><span>Say why. Do not use 999, NA, Blank, or an empty cell that secretly means zero.</span></li>
+        <li><strong>Day offsets</strong><span>Calendar dates stay with the provider. The export has days from the index date.</span></li>
+        <li><strong>No direct identifiers</strong><span>No name, national ID, email, phone, address, record number, or date of birth.</span></li>
+      </ul>
+      <p class="guide-scope">
+        The gate checks the curated CSV. It does not review mapping workbook rows or partner issue replies. A column that this package does not contain is marked N/A, not as a failure.
+      </p>
+    </section>
+
+    <section class="guide-dictionary" aria-label="Other validation presets">
+      <h3>Other presets</h3>
       <p>
-        A SEARCH-style workbook is a field catalogue. Audit it first, then adopt it as the config and check a CSV extract. Empty cells are flagged when null is forbidden, and date windows are checked on the year.
+        FHIR laboratory resources, SHIELD study packages, and an Excel field catalogue use the same gate screen. They are separate configs. An Excel dictionary is audited, then adopted, then checked against a CSV extract.
       </p>
       <ol>
         <li><strong>Audit.</strong> Upload the .xlsx as the dataset, or use Audit sample dictionary. FAIL means a blocking defect.</li>
@@ -99,6 +113,18 @@
         Download configs and sample packages to inspect offline, share with data providers, or run via CLI.
       </p>
       <div class="download-grid">
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/search-codification-v2.json')" [disabled]="isProcessing">
+          <strong>SEARCH config</strong>
+          <span>QC-01 to QC-40 catalogue</span>
+        </button>
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/samples/search-codification-v2-failed.json')" [disabled]="isProcessing">
+          <strong>SEARCH failing sample</strong>
+          <span>planted export</span>
+        </button>
+        <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/samples/search-codification-v2-valid.json')" [disabled]="isProcessing">
+          <strong>SEARCH passing sample</strong>
+          <span>five-person export</span>
+        </button>
         <button type="button" class="download-card" (click)="downloadWebsiteAsset('configs/fhir-lab-v1.json')" [disabled]="isProcessing">
           <strong>FHIR Lab config</strong>
           <span>fhir-lab-v1.json</span>
@@ -154,7 +180,7 @@
       <div class="context-grid">
         <label class="field">
           <span>Dataset ID</span>
-          <input type="text" [(ngModel)]="datasetId" [disabled]="isProcessing" placeholder="e.g. SHIELD-CC-2025-refresh-01" autocomplete="off" />
+          <input type="text" [(ngModel)]="datasetId" [disabled]="isProcessing" placeholder="e.g. DS01-pilot" autocomplete="off" />
         </label>
         <label class="field">
           <span>Source / site</span>
@@ -162,11 +188,11 @@
         </label>
         <label class="field">
           <span>Study ID</span>
-          <input type="text" [(ngModel)]="studyId" [disabled]="isProcessing" placeholder="e.g. SHIELD-CC-2025" autocomplete="off" />
+          <input type="text" [(ngModel)]="studyId" [disabled]="isProcessing" placeholder="SEARCH" autocomplete="off" />
         </label>
         <label class="field">
           <span>Dictionary ref</span>
-          <input type="text" [(ngModel)]="dictionaryRef" [disabled]="isProcessing" placeholder="e.g. Appendix 10 V2" autocomplete="off" />
+          <input type="text" [(ngModel)]="dictionaryRef" [disabled]="isProcessing" placeholder="Common Codification Guideline v2.0" autocomplete="off" />
         </label>
         <label class="field">
           <span>Timeframe</span>
@@ -210,14 +236,14 @@
             aria-label="Select validation preset"
           >
             <option value="" disabled>Select a preset…</option>
+            <optgroup label="SEARCH codification">
+              <option *ngFor="let p of searchPresets; trackBy: trackByPreset" [value]="p.id">{{ p.label }}</option>
+            </optgroup>
             <optgroup label="FHIR laboratory">
               <option *ngFor="let p of fhirPresets; trackBy: trackByPreset" [value]="p.id">{{ p.label }}</option>
             </optgroup>
             <optgroup label="SHIELD study dictionaries">
               <option *ngFor="let p of shieldPresets; trackBy: trackByPreset" [value]="p.id">{{ p.label }}</option>
-            </optgroup>
-            <optgroup label="SEARCH codification">
-              <option *ngFor="let p of searchPresets; trackBy: trackByPreset" [value]="p.id">{{ p.label }}</option>
             </optgroup>
           </select>
           <small class="field-hint" *ngIf="selectedPreset">{{ selectedPreset.description }}</small>
@@ -264,22 +290,22 @@
             class="link"
             type="button"
             (click)="resetConfig()"
-            [disabled]="isProcessing || configSourceLabel === 'Built-in fhir-lab-v1'"
+            [disabled]="isProcessing || effectiveConfig.id === 'search-codification-v2'"
           >
-            Reset to built-in
+            Reset to SEARCH
           </button>
         </div>
         <p class="config-error" *ngIf="configLoadError" role="alert">{{ configLoadError }}</p>
       </div>
 
-      <h2>Data source</h2>
+      <h2>Export</h2>
       <p class="panel-lead">
-        FHIR JSON / NDJSON, a study CSV package, or an Excel data dictionary (.xlsx) — max 10&nbsp;MB.
+        A SEARCH CSV package, or — with another preset — FHIR JSON, a SHIELD package, or an Excel dictionary. Max 10&nbsp;MB.
       </p>
 
       <div class="panel-block">
         <label class="field">
-          <span>Upload CAD file</span>
+          <span>Upload export</span>
           <input
             #fileInput
             type="file"
@@ -313,7 +339,7 @@
           aria-describedby="textarea-hint"
           aria-label="Paste dataset for validation"
         ></textarea>
-        <small id="textarea-hint" class="field-hint">FHIR Observation/DiagnosticReport, a SHIELD package, or a CSV extract for the active dictionary.</small>
+        <small id="textarea-hint" class="field-hint">{{ pasteHint }}</small>
       </label>
 
       <div class="privacy-note dictionary-next" *ngIf="dictionaryReady">
@@ -330,11 +356,29 @@
 
       <div class="demo-section">
         <div class="demo-copy">
-          <h3>Try an example</h3>
-          <p>The sample goes into the box above. Then run the quality gate to see which checks pass or fail.</p>
+          <h3>Try the SEARCH gate</h3>
+          <p>The sample is pasted above and the rules run immediately. One export is planted to fail. The other is a small file that passes.</p>
         </div>
         <button
           class="demo-button"
+          type="button"
+          (click)="showSearchCodificationDemo()"
+          [disabled]="isProcessing"
+          aria-label="Load the failing SEARCH export and run the quality gate"
+        >
+          Failing export
+        </button>
+        <button
+          class="demo-button"
+          type="button"
+          (click)="showSearchPassDemo()"
+          [disabled]="isProcessing"
+          aria-label="Load the passing SEARCH export and run the quality gate"
+        >
+          Passing export
+        </button>
+        <button
+          class="demo-button secondary-demo"
           type="button"
           (click)="showLabFailureDemo()"
           [disabled]="isProcessing"
@@ -343,31 +387,13 @@
           Laboratory failed
         </button>
         <button
-          class="demo-button"
-          type="button"
-          (click)="showSearchCodificationDemo()"
-          [disabled]="isProcessing"
-          aria-label="Load the SEARCH codification preset and run the quality gate"
-        >
-          SEARCH codification
-        </button>
-        <button
-          class="demo-button secondary-demo"
-          type="button"
-          (click)="loadSelectedPresetSample()"
-          [disabled]="isProcessing"
-          aria-label="Load sample for the selected preset"
-        >
-          Load preset sample
-        </button>
-        <button
           class="demo-button secondary-demo"
           type="button"
           (click)="loadExampleData()"
           [disabled]="isProcessing"
           aria-label="Load random FHIR example data"
         >
-          Load FHIR example
+          FHIR example
         </button>
         <button
           class="demo-button secondary-demo"
@@ -376,12 +402,9 @@
           [disabled]="isProcessing"
           aria-label="Audit the sample Excel data dictionary"
         >
-          Audit sample dictionary
+          Excel dictionary
         </button>
         <p class="demo-brief" *ngIf="sampleBrief">{{ sampleBrief }}</p>
-        <p class="demo-hint">
-          Preset sample follows the dropdown above. Laboratory failed is the chemistry panel that fails the gate. SEARCH codification runs QC-01 to QC-40 on a planted export.
-        </p>
       </div>
 
       <aside class="privacy-strip" aria-label="Privacy">
@@ -436,10 +459,12 @@
       >
         <span class="gate-label">Quality gate</span>
         <strong class="gate-value">{{ gate }}</strong>
-        <p *ngIf="gate === 'PASS' && lastParsedType !== 'Excel data dictionary'">Dataset may proceed to transfer / platform upload.</p>
+        <p *ngIf="gate === 'PASS' && lastParsedType === 'search-package'">Error-level checks passed. Review any warnings, then the export can be submitted.</p>
+        <p *ngIf="gate === 'PASS' && lastParsedType !== 'Excel data dictionary' && lastParsedType !== 'search-package'">Dataset may proceed to transfer / platform upload.</p>
         <p *ngIf="gate === 'PASS' && lastParsedType === 'Excel data dictionary' && !dictionaryAdopted">No blocking dictionary defects. Adopt it as the validation config before checking a data extract.</p>
         <p *ngIf="gate === 'PASS' && lastParsedType === 'Excel data dictionary' && dictionaryAdopted">This dictionary is the active config. Load the CSV extract and run the gate again.</p>
-        <p *ngIf="gate === 'FAIL' && lastParsedType !== 'Excel data dictionary'">Dataset rejected — notify the data provider with the issues below.</p>
+        <p *ngIf="gate === 'FAIL' && lastParsedType === 'search-package'">Export rejected. Fix every error. Correct each warning or explain it in the submission note.</p>
+        <p *ngIf="gate === 'FAIL' && lastParsedType !== 'Excel data dictionary' && lastParsedType !== 'search-package'">Dataset rejected — notify the data provider with the issues below.</p>
         <p *ngIf="gate === 'FAIL' && lastParsedType === 'Excel data dictionary' && !dictionaryAdopted">Dictionary has blocking defects. You can still adopt the compiled field list, then fix the errors before relying on it.</p>
         <p *ngIf="gate === 'FAIL' && lastParsedType === 'Excel data dictionary' && dictionaryAdopted">This dictionary is the active config, and it has blocking defects. Fix those before relying on a CSV extract.</p>
       </div>
@@ -465,8 +490,8 @@
             <span>PASS or FAIL with config hash for audit</span>
           </div>
           <div class="capability-item">
-            <strong>Check suites</strong>
-            <span>FHIR laboratory, SHIELD packages, or Excel data dictionaries</span>
+            <strong>QC-01 to QC-40</strong>
+            <span>Errors and warnings listed separately, in the wording of the guideline</span>
           </div>
           <div class="capability-item">
             <strong>Issues &amp; records</strong>
@@ -607,26 +632,52 @@
         </div>
 
         <div class="tab-panel" *ngIf="resultTab === 'checks'" role="tabpanel">
-          <p class="panel-lead" *ngIf="lastRunReport?.checkSuites?.length">
-            {{ enabledSuiteCount }} differentiated check suites executed.
-          </p>
-          <div class="results">
-            <div class="result" *ngFor="let result of checkResults">
-              <div class="result-title">
-                <span
-                  class="badge"
-                  [class.ok]="result.status === 'ok'"
-                  [class.warn]="result.status === 'warn'"
-                  [class.error]="result.status === 'error'"
-                >
-                  {{ result.statusLabel }}
-                </span>
-                <span>{{ result.label }}</span>
-                <span class="suite-tag" *ngIf="result.category">{{ result.category }}</span>
+          <ng-container *ngIf="searchRuleGroups as groups; else flatChecks">
+            <section class="rule-group" *ngFor="let group of groups">
+              <h3>{{ group.title }}</h3>
+              <p class="panel-lead">{{ group.lead }}</p>
+              <div class="results">
+                <div class="result" *ngFor="let result of group.results">
+                  <div class="result-title">
+                    <span
+                      class="badge"
+                      [class.ok]="result.status === 'ok' && result.statusLabel !== 'N/A'"
+                      [class.na]="result.statusLabel === 'N/A'"
+                      [class.info]="result.statusLabel === 'Info'"
+                      [class.warn]="result.status === 'warn' && result.statusLabel !== 'Info'"
+                      [class.error]="result.status === 'error'"
+                    >
+                      {{ result.statusLabel }}
+                    </span>
+                    <span>{{ result.label }}</span>
+                  </div>
+                  <p>{{ result.detail }}</p>
+                </div>
               </div>
-              <p>{{ result.detail }}</p>
+            </section>
+          </ng-container>
+          <ng-template #flatChecks>
+            <p class="panel-lead" *ngIf="lastRunReport?.checkSuites?.length">
+              {{ enabledSuiteCount }} check suites executed.
+            </p>
+            <div class="results">
+              <div class="result" *ngFor="let result of checkResults">
+                <div class="result-title">
+                  <span
+                    class="badge"
+                    [class.ok]="result.status === 'ok'"
+                    [class.warn]="result.status === 'warn'"
+                    [class.error]="result.status === 'error'"
+                  >
+                    {{ result.statusLabel }}
+                  </span>
+                  <span>{{ result.label }}</span>
+                  <span class="suite-tag" *ngIf="result.category">{{ result.category }}</span>
+                </div>
+                <p>{{ result.detail }}</p>
+              </div>
             </div>
-          </div>
+          </ng-template>
         </div>
 
         <div class="tab-panel" *ngIf="resultTab === 'issues'" role="tabpanel">
