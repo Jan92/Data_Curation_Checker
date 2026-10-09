@@ -192,6 +192,99 @@ export function createFhirDemoAbsentReasonConflict(): FhirDemoResource[] {
   ];
 }
 
+/**
+ * What the failing laboratory panel is built to show.
+ * Shown next to the load button so a walkthrough does not depend on reading the JSON.
+ */
+export const FHIR_LAB_FAILURE_BRIEF =
+  'One chemistry panel with planted defects: a duplicated id, a missing status, a result that also claims dataAbsentReason, a report that points at a missing observation, a unit without UCUM, a date that is not FHIR dateTime, and a critical potassium. The glucose result is valid, so one record still passes.';
+
+/**
+ * Teaching panel for the FHIR laboratory preset.
+ * Each resource is there to fail a different check suite, plus one valid glucose
+ * so the record list still shows a pass beside the failures.
+ */
+export function createFhirLabFailureShowcase(): FhirDemoResource[] {
+  return [
+    {
+      resourceType: 'Observation',
+      id: 'obs-glucose',
+      status: 'final',
+      category: labCategory(),
+      code: loinc('2339-0', 'Glucose [Mass/volume] in Blood', 'Glucose'),
+      subject: ref('Patient/example'),
+      effectiveDateTime: '2024-10-08T08:15:00Z',
+      issued: '2024-10-08T09:40:00Z',
+      valueQuantity: qty(95, 'mg/dL'),
+      referenceRange: range(70, 100, 'mg/dL'),
+      performer: [ref('Organization/lab-example')],
+      specimen: ref('Specimen/blood-example')
+    },
+    {
+      resourceType: 'Observation',
+      id: 'obs-glucose',
+      status: 'final',
+      category: labCategory(false),
+      code: loinc('2160', 'Creatinine [Mass/volume] in Serum or Plasma'),
+      subject: ref('Patient/example'),
+      effectiveDateTime: '2024-10-08T08:15:00Z',
+      issued: '2024-10-08T07:00:00Z',
+      valueQuantity: qty(1.1, 'mg/dL', false),
+      performer: [ref('Organization/lab-example')]
+    },
+    {
+      resourceType: 'Observation',
+      code: { text: 'Sodium' },
+      subject: { reference: 'patient-1' },
+      effectiveDateTime: '09/10/2024 08:15',
+      valueQuantity: qty(148, 'mmol/L', false),
+      dataAbsentReason: { coding: [{ system: DAR, code: 'error' }] },
+      referenceRange: [{}],
+      interpretation: [{ coding: [{ system: INTERP, code: 'LOW', display: 'Low' }] }],
+      category: [{ coding: [{ system: 'lab', code: 'chem' }] }]
+    },
+    {
+      resourceType: 'Observation',
+      id: 'obs k+',
+      status: 'complete' as Observation['status'],
+      category: labCategory(false),
+      code: loinc('2823-3', 'Potassium [Moles/volume] in Serum or Plasma'),
+      subject: ref('Patient/example'),
+      effectivePeriod: {
+        start: '2024-10-08T10:00:00Z',
+        end: '2024-10-08T08:00:00Z'
+      },
+      issued: '2099-01-01T00:00:00Z',
+      valueQuantity: qty(2.1, 'mmol/L'),
+      performer: [{ reference: 'the lab downstairs' }],
+      hasMember: [ref('Observation/not-in-panel')]
+    },
+    {
+      resourceType: 'Observation',
+      id: 'obs-empty',
+      status: 'final',
+      code: loinc('2951-2', 'Sodium [Moles/volume] in Serum or Plasma', 'Sodium'),
+      subject: ref('Patient/example'),
+      effectiveDateTime: '1899-01-01T00:00:00Z'
+    },
+    {
+      resourceType: 'DiagnosticReport',
+      id: 'dr-panel',
+      status: 'done' as DiagnosticReport['status'],
+      code: loinc('24323-8', 'Comprehensive metabolic panel'),
+      subject: ref('Patient/example'),
+      effectiveDateTime: '2024-10-08T09:00:00Z',
+      issued: '2024-10-08T08:00:00Z',
+      result: [
+        ref('Observation/obs-glucose'),
+        ref('Observation/not-in-panel'),
+        { reference: '' },
+        ref('Patient/example')
+      ]
+    } as Partial<DiagnosticReport>
+  ];
+}
+
 /** Picks one of 3 example variants at random for "Load FHIR example". */
 export function createRandomFhirExample(): FhirDemoResource[] {
   const variants = [createValidFhirDemo, createFhirDemoMissingStatus, createFhirDemoAbsentReasonConflict];

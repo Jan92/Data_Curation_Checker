@@ -37,9 +37,11 @@ import {
   writeLocalJson
 } from './browser-utils';
 import {
+  createFhirLabFailureShowcase,
   createFhirSampleWithIssues,
   createRandomFhirExample,
-  createValidFhirDemo
+  createValidFhirDemo,
+  FHIR_LAB_FAILURE_BRIEF
 } from './demo/fhir-samples';
 
 /** Result panel tabs. */
@@ -100,6 +102,8 @@ export class AppComponent {
   private cachedEffectiveConfig: EffectiveConfigRef = resolveEffectiveConfig(DEFAULT_FHIR_LAB_CONFIG);
 
   inputText = '';
+  /** Short explanation of the example currently sitting in the paste box. */
+  sampleBrief = '';
   selectedFile: File | null = null;
   selectedFileName = '';
   selectedFileSize = '';
@@ -349,6 +353,7 @@ export class AppComponent {
     this.selectedFileName = file?.name ?? '';
     this.selectedFileSize = file ? formatBytes(file.size) : '';
     this.validationError = null;
+    if (file) this.sampleBrief = '';
     this.clearResults();
   }
 
@@ -447,6 +452,20 @@ export class AppComponent {
   loadExampleData(): void {
     this.clearFile();
     this.inputText = JSON.stringify(createRandomFhirExample(), null, 2);
+    this.sampleBrief =
+      'A random laboratory example. It may pass, or it may fail only one or two checks. Use Failing lab panel for a fixed walkthrough.';
+    this.clearResults();
+  }
+
+  /** Load the fixed chemistry panel that fails several laboratory check suites. */
+  loadLabFailureDemo(): void {
+    this.clearFile();
+    this.inputText = JSON.stringify(createFhirLabFailureShowcase(), null, 2);
+    this.sampleBrief = FHIR_LAB_FAILURE_BRIEF;
+    this.datasetId = 'fhir-lab-failure-demo';
+    if (!this.sourceSite.trim()) this.sourceSite = 'local-lab';
+    if (!this.licenseField.trim()) this.licenseField = 'internal';
+    if (!this.provenance.trim()) this.provenance = 'ui-demo';
     this.clearResults();
   }
 
@@ -468,6 +487,8 @@ export class AppComponent {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       this.inputText = '';
+      this.sampleBrief =
+        'Sample Excel dictionary with planted catalogue defects. The gate audits the workbook, not patient rows.';
       this.selectedFile = file;
       this.selectedFileName = file.name;
       this.selectedFileSize = formatBytes(file.size);
@@ -599,6 +620,7 @@ export class AppComponent {
     const text = await fetchTextAsset(preset.samplePath);
     this.clearFile();
     this.inputText = text;
+    this.sampleBrief = `${preset.label}. ${preset.description}`;
     this.clearResults();
     this.applyPresetDefaults(preset);
   }
@@ -606,6 +628,8 @@ export class AppComponent {
   private loadValidFhirDemo(): void {
     this.clearFile();
     this.inputText = JSON.stringify(createValidFhirDemo(), null, 2);
+    this.sampleBrief =
+      'A small valid laboratory panel: glucose, creatinine, and the report that links them. Structural checks should pass.';
     this.clearResults();
   }
 
