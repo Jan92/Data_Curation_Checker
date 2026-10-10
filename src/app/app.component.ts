@@ -541,7 +541,7 @@ export class AppComponent {
       this.clearFile();
       this.inputText = text;
       this.sampleBrief =
-        'Ten people in DS01: five women aged 44 born in DK and five men aged 52 born in SE, all seen at site 1. Subject, event, questionnaire, and treatment files use the guideline file names. Labs, BMI, BSA, and the left-ventricular volumes agree. No polyps were found. Consent is recorded. Error-level checks pass. Rules for columns this cohort does not export are marked N/A.';
+        'Ten people in DS01: five women aged 44 born in DK and five men aged 52 born in SE, all seen at site 1. Identifiers are random eight-character tokens. Subject, event, questionnaire, and treatment files use the guideline file names. Labs, BMI, BSA, and the left-ventricular volumes agree. No polyps were found. Consent is recorded. Error-level checks pass. Rules for columns this cohort does not export are marked N/A.';
       await this.runCheck();
     } catch (error) {
       this.validationError = this.toErrorMessage(error, 'Could not load the passing sample.');

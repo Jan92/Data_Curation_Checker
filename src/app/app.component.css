@@ -255,6 +255,10 @@ h1 {
   color: #1c1917;
 }
 
+.key-list {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .rule-list span {
   font-size: 12px;
   color: #514c45;

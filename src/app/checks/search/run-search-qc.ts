@@ -40,6 +40,24 @@ const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/;
 const COMPARATORS = new Set(['<', '<=', '>', '>=', '=']);
+const FORBIDDEN_MISSING = /^(?:na|n\/a|null|blank|nd)$/i;
+
+/** Row key from the eight-table model. subject_id on every table is QC-01. */
+const TABLE_KEYS: Record<string, string[]> = {
+  subject: ['subject_id'],
+  event: ['subject_id', 'event_id'],
+  lesion: ['subject_id', 'event_id', 'lesion_id'],
+  specimen: ['subject_id', 'specimen_id'],
+  treatment: ['subject_id', 'treatment_id'],
+  questionnaire: ['subject_id', 'questionnaire_id'],
+  annotation: ['subject_id', 'event_id', 'annotation_id'],
+  image: ['image_id']
+};
+
+/** Columns section 4 requires on every row, in addition to the key. */
+const TABLE_REQUIRED: Record<string, string[]> = {
+  event: ['event_type', 'day_from_index']
+};
 
 const FIGO_OVARIAN = new Set([
   'I', 'IA', 'IB', 'IC', 'IC1', 'IC2', 'IC3', 'II', 'IIA', 'IIB', 'III', 'IIIA', 'IIIA1',
@@ -692,6 +710,7 @@ class SearchQcRunner {
     for (const rule of this.catalog.rules) {
       evaluators[rule.id]?.();
     }
+    this.qcExportShape();
   }
 
   private loc(file: ParsedFile, rowNumber?: number): string {
@@ -782,6 +801,71 @@ class SearchQcRunner {
     }
   }
 
+  /**
+   * Section 4: each table has one row per unit of analysis, and every event
+   * row carries event_type and day_from_index.
+   */
+  private qcExportShape(): void {
+    for (const file of this.files) {
+      if (!file.table) continue;
+      const key = TABLE_KEYS[file.table] ?? [];
+      const extra = TABLE_REQUIRED[file.table] ?? [];
+      const missingKey = key.filter((name) => name !== 'subject_id' && !file.headers.some((header) => header.header === name));
+      for (const name of missingKey) {
+        this.add(
+          'QC-03',
+          'error',
+          'Key column missing',
+          `${file.table} rows are identified by ${key.join(' + ')}. The column ${name} is missing.`,
+          file.fileName,
+          name
+        );
+      }
+      for (const name of extra) {
+        if (file.headers.some((header) => header.header === name)) continue;
+        this.add(
+          'QC-03',
+          'error',
+          'Required column missing',
+          `Every ${file.table} row includes ${name}.`,
+          file.fileName,
+          name
+        );
+      }
+      if (file.table === 'subject' || missingKey.length) continue;
+      const seen = new Map<string, string>();
+      file.rows.forEach((row, index) => {
+        const where = this.loc(file, index + 2);
+        for (const name of key) {
+          if (name === 'subject_id' || !file.headers.some((header) => header.header === name)) continue;
+          if (this.cell(file, row, name)) continue;
+          this.add('QC-01', 'error', 'Key empty', `${name} is required on every ${file.table} row.`, where, name);
+        }
+        for (const name of extra) {
+          if (!file.headers.some((header) => header.header === name) || this.cell(file, row, name)) continue;
+          this.add('QC-03', 'error', 'Required value missing', `Every ${file.table} row includes ${name}.`, where, name);
+        }
+        const parts = key.map((name) => this.cell(file, row, name));
+        if (parts.some((part) => !part)) return;
+        const id = parts.join('\u001f');
+        const previous = seen.get(id);
+        if (previous) {
+          this.add(
+            'QC-01',
+            'error',
+            'Duplicate key',
+            `${key.join(' + ')} is already used at ${previous}.`,
+            where,
+            key[key.length - 1],
+            parts[parts.length - 1]
+          );
+        } else {
+          seen.set(id, where);
+        }
+      });
+    }
+  }
+
   private qc02(): void {
     this.mark('QC-02');
     for (const file of this.files) {
@@ -819,6 +903,17 @@ class SearchQcRunner {
               'error',
               'Calendar date in text',
               'Calendar dates are not exported. Use a day offset.',
+              where,
+              header.header,
+              value
+            );
+          }
+          if (header.cde?.dataType === 'text' && !isDar(value, this.dar)) {
+            this.add(
+              'QC-02',
+              'warn',
+              'Free text exported',
+              'Free text stays with the provider. Code it into a structured variable, or leave the cell empty.',
               where,
               header.header,
               value
@@ -869,7 +964,8 @@ class SearchQcRunner {
     this.mark('QC-04');
     for (const file of this.files) {
       const base = file.fileName.split(/[/\\]/).pop() ?? file.fileName;
-      if (!FILE_NAME.test(base)) {
+      const named = FILE_NAME.exec(base);
+      if (!named) {
         this.add(
           'QC-04',
           'warn',
@@ -877,6 +973,34 @@ class SearchQcRunner {
           'Expected <dataset_id>_<table>_<YYYYMMDD>.csv.',
           file.fileName
         );
+      } else {
+        const datasetId = base.slice(0, base.indexOf('_'));
+        file.rows.forEach((row, index) => {
+          const subjectId = this.cell(file, row, 'subject_id');
+          if (subjectId && !subjectId.startsWith(`${datasetId}-`) && !subjectId.startsWith(`${datasetId}_`)) {
+            this.add(
+              'QC-04',
+              'warn',
+              'File name and subject_id',
+              `This file is named for ${datasetId}, but subject_id does not start with ${datasetId}.`,
+              this.loc(file, index + 2),
+              'subject_id',
+              subjectId
+            );
+          }
+          const rowDataset = this.cell(file, row, 'dataset_id');
+          if (rowDataset && rowDataset.toUpperCase() !== datasetId.toUpperCase()) {
+            this.add(
+              'QC-04',
+              'warn',
+              'File name and dataset_id',
+              `This file is named for ${datasetId}, but dataset_id is ${rowDataset}.`,
+              this.loc(file, index + 2),
+              'dataset_id',
+              rowDataset
+            );
+          }
+        });
       }
       if (file.delimiter !== ',') {
         this.add(
@@ -925,6 +1049,19 @@ class SearchQcRunner {
         file.headers.forEach((header, column) => {
           const value = row[column] ?? '';
           if (!value || isDar(value, this.dar)) return;
+          if (FORBIDDEN_MISSING.test(value.trim())) {
+            saw = true;
+            this.add(
+              'QC-05',
+              'error',
+              'Missing-value word',
+              'NA, NULL, Blank and ND are not exported. Use a data-absent reason.',
+              this.loc(file, index + 2),
+              header.header,
+              value
+            );
+            return;
+          }
           if (header.kind === 'companion-dar') {
             saw = true;
             this.add(
@@ -1039,7 +1176,20 @@ class SearchQcRunner {
           }
           if (!numeric) return;
           saw = true;
-          if (parseNumber(value) !== null) return;
+          if (FORBIDDEN_MISSING.test(value.trim())) return;
+          const parsed = parseNumber(value);
+          if (parsed === 999) {
+            this.add(
+              'QC-07',
+              'warn',
+              '999 as a value',
+              '999 is not a missing code. Leave the cell empty and give the reason in the companion column.',
+              this.loc(file, index + 2),
+              header.header,
+              value
+            );
+          }
+          if (parsed !== null) return;
           const why = value.includes(',')
             ? 'Use a dot as the decimal separator, not a comma.'
             : /[<>]/.test(value)

@@ -86,13 +86,27 @@
         <li><strong>One name</strong><span>The column is the catalogue variable, not the local field name.</span></li>
         <li><strong>One unit</strong><span>The unit sits in the name. The cell is only the number.</span></li>
         <li><strong>Coded values</strong><span>A code is from that variable’s value set, or a data-absent reason.</span></li>
-        <li><strong>Missing values</strong><span>Say why. Do not use 999, NA, Blank, or an empty cell that secretly means zero.</span></li>
+        <li><strong>Missing values</strong><span>Say why, with a data-absent reason. Do not use 999, NA, NULL, Blank, or ND.</span></li>
         <li><strong>Day offsets</strong><span>Calendar dates stay with the provider. The export has days from the index date.</span></li>
         <li><strong>No direct identifiers</strong><span>No name, national ID, email, phone, address, record number, or date of birth.</span></li>
       </ul>
       <p class="guide-scope">
         The gate checks the curated CSV. It does not review mapping workbook rows or partner issue replies. A column that this package does not contain is marked N/A, not as a failure.
       </p>
+    </section>
+
+    <section class="guide-rules" aria-label="Eight export tables">
+      <h3>Eight tables, one row per thing</h3>
+      <ul class="rule-list key-list">
+        <li><strong>subject</strong><span>One person. Key: subject_id.</span></li>
+        <li><strong>event</strong><span>One test or visit. Key: subject_id + event_id. Every row has event_type and day_from_index.</span></li>
+        <li><strong>lesion</strong><span>One lesion. Key: subject_id + event_id + lesion_id.</span></li>
+        <li><strong>specimen</strong><span>One specimen. Key: subject_id + specimen_id.</span></li>
+        <li><strong>treatment</strong><span>One treatment line. Key: subject_id + treatment_id.</span></li>
+        <li><strong>questionnaire</strong><span>One administration. Key: subject_id + questionnaire_id.</span></li>
+        <li><strong>annotation</strong><span>One video mark. Key: subject_id + event_id + annotation_id.</span></li>
+        <li><strong>image</strong><span>One image. Key: image_id. subject_id is still required on the row.</span></li>
+      </ul>
     </section>
 
     <section class="guide-dictionary" aria-label="Other validation presets">
